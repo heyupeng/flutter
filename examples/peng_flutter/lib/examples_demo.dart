@@ -36,32 +36,32 @@ class ExampleItem {
 
 var examples = [
   ExampleItem(
-    title: "Hello World De11mo",
+    title: "Hello World",
     // builder: (BuildContext context) {
     //   return const HelloWorldPage(title: "Hello World Page ");
     // },
     onTap: (BuildContext context, Object? arguments) {
       Route route =  MaterialPageRoute<bool>(builder: (context) {
         var item = arguments as ExampleItem;
-        return  HelloWorldPage(title: item.title + ' - ar1gs');
+        return  HelloWorldPage(title: item.title);
       },);
       Navigator.of(context).push(route);
     },
   ),
   ExampleItem(
-    title: "Bottom App Bar Demo", 
+    title: "Bottom App Bar", 
     builder: (BuildContext context) {
       return const BottomAppBarDemo();
     },
   ),
   ExampleItem(
-    title: "Bottom Nav Bar Demo", 
+    title: "Bottom Nav Bar", 
     builder: (BuildContext context) {
       return const BottomNavBarPage(title: "Bottom Nav Bar Page");
     },
   ),
   ExampleItem(
-    title: "ListView Demo", 
+    title: "ListView", 
     builder: (BuildContext context) {
       return const  ListViewPage(title: "ListView Page");
     },
@@ -133,7 +133,9 @@ class _ExampleListPageState extends State<ExampleListPage>
 
   Widget listItemBuilder(context, index) {
     var item = examples[index];
-    return ListTile(title: Text(item.title), 
+    return 
+    ListTile(title: Text(item.title), 
+      tileColor: Colors.green.withOpacity(index%2 == 0 ? 0.1: 0.3),
       onTap: () {
         onTapListItem(context, item);
       },
@@ -144,7 +146,7 @@ class _ExampleListPageState extends State<ExampleListPage>
     return ListView.separated(
       itemBuilder: listItemBuilder,
       separatorBuilder: (context, index) {
-        return const Divider(color: Color.fromARGB(255, 171, 33, 23), height: 1, indent: 15,endIndent: 15 ,);
+        return const Divider(color:   Color.fromARGB(71, 143, 94, 90), height: 1, indent: 15,endIndent: 15 ,);
       },
       itemCount: examples.length
     );

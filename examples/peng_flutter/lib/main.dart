@@ -1,11 +1,15 @@
 import 'dart:ffi';
 import 'dart:io';
 
-import 'package:peng_flutter/SampleDemo/HelloWorld.dart';
-import 'package:peng_flutter/examples_demo.dart';
 import 'package:flutter/material.dart';
 
+import 'package:peng_flutter/base/app_base.dart';
+import 'package:peng_flutter/examples_demo.dart';
+import 'package:peng_flutter/pages/history_page.dart';
+import 'package:peng_flutter/pages/settings_page.dart';
+
 import 'SampleDemo/ListViewDemo.dart';
+import './p_samples/main.dart' as samples;
 
 void main() {
   runApp(const MyApp());
@@ -31,93 +35,36 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const ExampleListPage(),
+      home: 0 == 0 ? buildTabApp() : const ExampleListPage(),
     );
   }
-}
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-  int _selectedIndex = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  void _bottomBarTappedForItem(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  Widget _buildBottomBarCurrentWidget(int selectedIndex) {
-    if (selectedIndex == 1) {
-      return ListExample(count: _counter,);
-    }
-    return const HelloWorldPage(title: "Hello Word Demo");
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-        
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: _buildBottomBarCurrentWidget(_selectedIndex)
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-      
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(label: "Home", tooltip: "Home Page", icon: Icon(Icons.home)),
-          BottomNavigationBarItem(label: "History", tooltip: "History Page", icon: Icon(Icons.history))
-        ],
-        onTap: _bottomBarTappedForItem,
-      ) ,
-    );
+  buildTabApp() {
+    return 
+    BaseApp(
+      child: 
+        TabPage(
+          children: [
+            MyHomePage(title: 'title', routes: 
+            {
+              ...samples.homeRoutes,
+              'dev': (context) => const ExampleListPage(), 
+            },), 
+            HistroyPage(title: 'History'),
+            SettingsPage(title: 'Settings',)
+          ],
+          items: const [
+            TabBarItem(text: 'Home', icon: Icon(Icons.home), tooltip: 'home'),
+            TabBarItem(text: 'history', icon: Icon(Icons.history), tooltip: 'history'),
+            TabBarItem(text: 'Settings', icon: Icon(Icons.settings), tooltip: 'settings'),
+          ]
+        )
+      , 
+    )
+    ;
   }
 }
+
 
 
 

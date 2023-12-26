@@ -104,15 +104,25 @@ class _ListExampleState extends State<ListExample> {
         }
         
         var itemIndex = index ~/ 2;
-        return ListTile(title: Text('$itemIndex'),
-          style: ListTileStyle.drawer,
-          onTap: () {
-            tapListItem(context, itemIndex);
-
-          },
-        );
+        return buildListItem(context, itemIndex);
       },
     );
+  }
+  Widget buildListItem(BuildContext context, int index) {
+    var text = '$index ${['', 'focusColor', 'hoverColor', 'splashColor', 'tileColor', 'textColor',
+    ][index%6]}';
+    return 
+      ListTile(title: Text(text),
+        style: ListTileStyle.drawer,
+        focusColor:   index%6 != 1? null: Colors.red,
+        hoverColor:   index%6 != 2? null: Colors.orange,
+        splashColor:  index%6 != 3? null: Colors.yellow,
+        tileColor:    index%6 != 4? null: Colors.green.withOpacity((index/6).ceil()%2 == 0 ? 0.3: 0.1),
+        textColor:    index%6 != 5? null: Colors.teal,
+        onTap: () {
+          tapListItem(context, index);
+        },
+      );
   }
 
   tapListItem(context, itemIndex) {
