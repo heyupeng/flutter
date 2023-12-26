@@ -28,7 +28,6 @@ import 'src/commands/doctor.dart';
 import 'src/commands/downgrade.dart';
 import 'src/commands/drive.dart';
 import 'src/commands/emulators.dart';
-import 'src/commands/format.dart';
 import 'src/commands/generate.dart';
 import 'src/commands/generate_localizations.dart';
 import 'src/commands/ide_config.dart';
@@ -107,7 +106,7 @@ Future<void> main(List<String> args) async {
       // devtools source code.
       DevtoolsLauncher: () => DevtoolsServerLauncher(
         processManager: globals.processManager,
-        dartExecutable: globals.artifacts!.getHostArtifact(HostArtifact.engineDartBinary).path,
+        dartExecutable: globals.artifacts!.getArtifactPath(Artifact.engineDartBinary),
         logger: globals.logger,
         botDetector: globals.botDetector,
       ),
@@ -125,8 +124,17 @@ Future<void> main(List<String> args) async {
           windows: globals.platform.isWindows,
         );
       },
+      Terminal: () {
+        return AnsiTerminal(
+          stdio: globals.stdio,
+          platform: globals.platform,
+          now: DateTime.now(),
+          isCliAnimationEnabled: featureFlags.isCliAnimationEnabled,
+        );
+      },
       PreRunValidator: () => PreRunValidator(fileSystem: globals.fs),
     },
+    shutdownHooks: globals.shutdownHooks,
   );
 }
 
@@ -142,11 +150,36 @@ List<FlutterCommand> generateCommands({
     logger: globals.logger,
     terminal: globals.terminal,
     artifacts: globals.artifacts!,
-    allProjectValidators: <ProjectValidator>[],
+    // new ProjectValidators should be added here for the --suggestions to run
+    allProjectValidators: <ProjectValidator>[
+      GeneralInfoProjectValidator(),
+      VariableDumpMachineProjectValidator(
+        logger: globals.logger,
+        fileSystem: globals.fs,
+        platform: globals.platform,
+      ),
+    ],
+    suppressAnalytics: globals.flutterUsage.suppressAnalytics,
   ),
   AssembleCommand(verboseHelp: verboseHelp, buildSystem: globals.buildSystem),
-  AttachCommand(verboseHelp: verboseHelp),
-  BuildCommand(verboseHelp: verboseHelp),
+  AttachCommand(
+    verboseHelp: verboseHelp,
+    stdio: globals.stdio,
+    logger: globals.logger,
+    terminal: globals.terminal,
+    signals: globals.signals,
+    platform: globals.platform,
+    processInfo: globals.processInfo,
+    fileSystem: globals.fs,
+  ),
+  BuildCommand(
+    fileSystem: globals.fs,
+    buildSystem: globals.buildSystem,
+    osUtils: globals.os,
+    verboseHelp: verboseHelp,
+    androidSdk: globals.androidSdk,
+    logger: globals.logger,
+  ),
   ChannelCommand(verboseHelp: verboseHelp),
   CleanCommand(verbose: verbose),
   ConfigCommand(verboseHelp: verboseHelp),
@@ -165,20 +198,24 @@ List<FlutterCommand> generateCommands({
   DebugAdapterCommand(verboseHelp: verboseHelp),
   DevicesCommand(verboseHelp: verboseHelp),
   DoctorCommand(verbose: verbose),
-  DowngradeCommand(verboseHelp: verboseHelp),
+  DowngradeCommand(verboseHelp: verboseHelp, logger: globals.logger),
   DriveCommand(verboseHelp: verboseHelp,
     fileSystem: globals.fs,
     logger: globals.logger,
     platform: globals.platform,
+    signals: globals.signals,
   ),
   EmulatorsCommand(),
-  FormatCommand(verboseHelp: verboseHelp),
   GenerateCommand(),
   GenerateLocalizationsCommand(
     fileSystem: globals.fs,
     logger: globals.logger,
+    artifacts: globals.artifacts!,
+    processManager: globals.processManager,
   ),
-  InstallCommand(),
+  InstallCommand(
+    verboseHelp: verboseHelp,
+  ),
   LogsCommand(),
   MakeHostAppEditableCommand(),
   PackagesCommand(),
@@ -190,9 +227,9 @@ List<FlutterCommand> generateCommands({
     featureFlags: featureFlags,
   ),
   RunCommand(verboseHelp: verboseHelp),
-  ScreenshotCommand(),
+  ScreenshotCommand(fs: globals.fs),
   ShellCompletionCommand(),
-  TestCommand(verboseHelp: verboseHelp),
+  TestCommand(verboseHelp: verboseHelp, verbose: verbose),
   UpgradeCommand(verboseHelp: verboseHelp),
   SymbolizeCommand(
     stdio: globals.stdio,

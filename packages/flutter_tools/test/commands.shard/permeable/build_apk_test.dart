@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:args/command_runner.dart';
 import 'package:flutter_tools/src/android/android_builder.dart';
 import 'package:flutter_tools/src/android/android_sdk.dart';
 import 'package:flutter_tools/src/android/android_studio.dart';
+import 'package:flutter_tools/src/android/java.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
+import 'package:flutter_tools/src/base/logger.dart';
+import 'package:flutter_tools/src/base/version.dart';
 import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/commands/build_apk.dart';
 import 'package:flutter_tools/src/globals.dart' as globals;
@@ -26,8 +27,8 @@ void main() {
   Cache.disableLocking();
 
   group('Usage', () {
-    Directory tempDir;
-    TestUsage testUsage;
+    late Directory tempDir;
+    late TestUsage testUsage;
 
     setUp(() {
       testUsage = TestUsage();
@@ -108,11 +109,11 @@ void main() {
   });
 
   group('Gradle', () {
-    Directory tempDir;
-    FakeProcessManager processManager;
-    String gradlew;
-    AndroidSdk mockAndroidSdk;
-    TestUsage testUsage;
+    late Directory tempDir;
+    late FakeProcessManager processManager;
+    late String gradlew;
+    late AndroidSdk mockAndroidSdk;
+    late TestUsage testUsage;
 
     setUp(() {
       testUsage = TestUsage();
@@ -143,6 +144,7 @@ void main() {
       },
       overrides: <Type, Generator>{
         AndroidSdk: () => null,
+        Java: () => null,
         FlutterProjectFactory: () => FakeFlutterProjectFactory(tempDir),
         ProcessManager: () => processManager,
         AndroidStudio: () => FakeAndroidStudio(),
@@ -174,6 +176,7 @@ void main() {
     },
     overrides: <Type, Generator>{
       AndroidSdk: () => mockAndroidSdk,
+      Java: () => null,
       FlutterProjectFactory: () => FakeFlutterProjectFactory(tempDir),
       ProcessManager: () => processManager,
       AndroidStudio: () => FakeAndroidStudio(),
@@ -205,6 +208,7 @@ void main() {
     },
     overrides: <Type, Generator>{
       AndroidSdk: () => mockAndroidSdk,
+      Java: () => null,
       FlutterProjectFactory: () => FakeFlutterProjectFactory(tempDir),
       ProcessManager: () => processManager,
       AndroidStudio: () => FakeAndroidStudio(),
@@ -236,6 +240,7 @@ void main() {
     },
     overrides: <Type, Generator>{
       AndroidSdk: () => mockAndroidSdk,
+      Java: () => null,
       FlutterProjectFactory: () => FakeFlutterProjectFactory(tempDir),
       ProcessManager: () => processManager,
       AndroidStudio: () => FakeAndroidStudio(),
@@ -269,6 +274,7 @@ void main() {
     },
     overrides: <Type, Generator>{
       AndroidSdk: () => mockAndroidSdk,
+      Java: () => null,
       FlutterProjectFactory: () => FakeFlutterProjectFactory(tempDir),
       ProcessManager: () => processManager,
       AndroidStudio: () => FakeAndroidStudio(),
@@ -320,6 +326,7 @@ void main() {
     },
     overrides: <Type, Generator>{
       AndroidSdk: () => mockAndroidSdk,
+      Java: () => null,
       FlutterProjectFactory: () => FakeFlutterProjectFactory(tempDir),
       ProcessManager: () => processManager,
       Usage: () => testUsage,
@@ -374,6 +381,7 @@ void main() {
     overrides: <Type, Generator>{
       AndroidSdk: () => mockAndroidSdk,
       FlutterProjectFactory: () => FakeFlutterProjectFactory(tempDir),
+      Java: () => null,
       ProcessManager: () => processManager,
       Usage: () => testUsage,
       AndroidStudio: () => FakeAndroidStudio(),
@@ -420,6 +428,7 @@ void main() {
     overrides: <Type, Generator>{
       AndroidSdk: () => mockAndroidSdk,
       FlutterProjectFactory: () => FakeFlutterProjectFactory(tempDir),
+      Java: () => null,
       ProcessManager: () => processManager,
       Usage: () => testUsage,
       AndroidStudio: () => FakeAndroidStudio(),
@@ -429,9 +438,9 @@ void main() {
 
 Future<BuildApkCommand> runBuildApkCommand(
   String target, {
-  List<String> arguments,
+  List<String>? arguments,
 }) async {
-  final BuildApkCommand command = BuildApkCommand();
+  final BuildApkCommand command = BuildApkCommand(logger: BufferLogger.test());
   final CommandRunner<void> runner = createTestCommandRunner(command);
   await runner.run(<String>[
     'apk',
@@ -452,4 +461,7 @@ class FakeAndroidSdk extends Fake implements AndroidSdk {
 class FakeAndroidStudio extends Fake implements AndroidStudio {
   @override
   String get javaPath => 'java';
+
+  @override
+  Version get version => Version(2021, 3, 1);
 }

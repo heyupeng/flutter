@@ -5,6 +5,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 
 class TestScrollPhysics extends ScrollPhysics {
   const TestScrollPhysics({
@@ -65,6 +66,7 @@ void main() {
     const ScrollPhysics never = NeverScrollableScrollPhysics();
     const ScrollPhysics always = AlwaysScrollableScrollPhysics();
     const ScrollPhysics page = PageScrollPhysics();
+    const ScrollPhysics bounceDesktop = BouncingScrollPhysics(decelerationRate: ScrollDecelerationRate.fast);
 
     String types(ScrollPhysics? value) => value!.parent == null ? '${value.runtimeType}' : '${value.runtimeType} ${types(value.parent)}';
 
@@ -92,6 +94,11 @@ void main() {
       types(page.applyTo(bounce.applyTo(clamp.applyTo(never.applyTo(always))))),
       'PageScrollPhysics BouncingScrollPhysics ClampingScrollPhysics NeverScrollableScrollPhysics AlwaysScrollableScrollPhysics',
     );
+
+    expect(
+      bounceDesktop.applyTo(always),
+      (BouncingScrollPhysics x) => x.decelerationRate == ScrollDecelerationRate.fast
+    );
   });
 
   test("ScrollPhysics scrolling subclasses - Creating the simulation doesn't alter the velocity for time 0", () {
@@ -101,6 +108,7 @@ void main() {
       pixels: 20.0,
       viewportDimension: 500.0,
       axisDirection: AxisDirection.down,
+      devicePixelRatio: 3.0,
     );
 
     const BouncingScrollPhysics bounce = BouncingScrollPhysics();
@@ -123,11 +131,12 @@ void main() {
 
     test('overscroll is progressively harder', () {
       final ScrollMetrics lessOverscrolledPosition = FixedScrollMetrics(
-          minScrollExtent: 0.0,
-          maxScrollExtent: 1000.0,
-          pixels: -20.0,
-          viewportDimension: 100.0,
-          axisDirection: AxisDirection.down,
+        minScrollExtent: 0.0,
+        maxScrollExtent: 1000.0,
+        pixels: -20.0,
+        viewportDimension: 100.0,
+        axisDirection: AxisDirection.down,
+        devicePixelRatio: 3.0,
       );
 
       final ScrollMetrics moreOverscrolledPosition = FixedScrollMetrics(
@@ -136,6 +145,7 @@ void main() {
         pixels: -40.0,
         viewportDimension: 100.0,
         axisDirection: AxisDirection.down,
+        devicePixelRatio: 3.0,
       );
 
       final double lessOverscrollApplied =
@@ -164,6 +174,7 @@ void main() {
         pixels: -20.0,
         viewportDimension: 100.0,
         axisDirection: AxisDirection.down,
+        devicePixelRatio: 3.0,
       );
 
       final double easingApplied =
@@ -180,6 +191,7 @@ void main() {
         pixels: 300.0,
         viewportDimension: 100.0,
         axisDirection: AxisDirection.down,
+        devicePixelRatio: 3.0,
       );
 
       expect(
@@ -199,6 +211,7 @@ void main() {
         pixels: -20.0,
         viewportDimension: 100.0,
         axisDirection: AxisDirection.down,
+        devicePixelRatio: 3.0,
       );
 
       final double easingApplied =
@@ -209,13 +222,34 @@ void main() {
       expect(easingApplied.abs(), greaterThan(tensioningApplied.abs()));
     });
 
+    test('no easing resistance for ScrollDecelerationRate.fast', () {
+      const BouncingScrollPhysics desktop = BouncingScrollPhysics(decelerationRate: ScrollDecelerationRate.fast);
+      final ScrollMetrics overscrolledPosition = FixedScrollMetrics(
+        minScrollExtent: 0.0,
+        maxScrollExtent: 1000.0,
+        pixels: -20.0,
+        viewportDimension: 100.0,
+        axisDirection: AxisDirection.down,
+        devicePixelRatio: 3.0,
+      );
+
+      final double easingApplied =
+          desktop.applyPhysicsToUserOffset(overscrolledPosition, -10.0);
+      final double tensioningApplied =
+          desktop.applyPhysicsToUserOffset(overscrolledPosition, 10.0);
+
+      expect(tensioningApplied.abs(), lessThan(easingApplied.abs()));
+      expect(easingApplied, -10);
+    });
+
     test('overscroll a small list and a big list works the same way', () {
       final ScrollMetrics smallListOverscrolledPosition = FixedScrollMetrics(
-          minScrollExtent: 0.0,
-          maxScrollExtent: 10.0,
-          pixels: -20.0,
-          viewportDimension: 100.0,
-          axisDirection: AxisDirection.down,
+        minScrollExtent: 0.0,
+        maxScrollExtent: 10.0,
+        pixels: -20.0,
+        viewportDimension: 100.0,
+        axisDirection: AxisDirection.down,
+        devicePixelRatio: 3.0,
       );
 
       final ScrollMetrics bigListOverscrolledPosition = FixedScrollMetrics(
@@ -224,6 +258,7 @@ void main() {
         pixels: -20.0,
         viewportDimension: 100.0,
         axisDirection: AxisDirection.down,
+        devicePixelRatio: 3.0,
       );
 
       final double smallListOverscrollApplied =
@@ -237,6 +272,20 @@ void main() {
       expect(smallListOverscrollApplied, greaterThan(1.0));
       expect(smallListOverscrollApplied, lessThan(20.0));
     });
+
+    test('frictionFactor', () {
+      const BouncingScrollPhysics mobile = BouncingScrollPhysics();
+      const BouncingScrollPhysics desktop = BouncingScrollPhysics(decelerationRate: ScrollDecelerationRate.fast);
+
+      expect(desktop.frictionFactor(0), 0.26);
+      expect(mobile.frictionFactor(0), 0.52);
+
+      expect(desktop.frictionFactor(0.4), moreOrLessEquals(0.0936));
+      expect(mobile.frictionFactor(0.4), moreOrLessEquals(0.1872));
+
+      expect(desktop.frictionFactor(0.8), moreOrLessEquals(0.0104));
+      expect(mobile.frictionFactor(0.8), moreOrLessEquals(0.0208));
+    });
   });
 
   test('ClampingScrollPhysics assertion test', () {
@@ -248,6 +297,7 @@ void main() {
       maxScrollExtent: 1000,
       viewportDimension: 0,
       axisDirection: AxisDirection.down,
+      devicePixelRatio: 3.0,
     );
     expect(position.pixels, pixels);
     late FlutterError error;
@@ -290,7 +340,7 @@ FlutterError
     }
   });
 
-  testWidgets('PageScrollPhysics work with NestedScrollView', (WidgetTester tester) async {
+  testWidgetsWithLeakTracking('PageScrollPhysics work with NestedScrollView', (WidgetTester tester) async {
     // Regression test for: https://github.com/flutter/flutter/issues/47850
     await tester.pumpWidget(Material(
       child: Directionality(

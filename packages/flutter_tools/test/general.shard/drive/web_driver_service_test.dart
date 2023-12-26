@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:async';
 
 import 'package:file/src/interface/file_system.dart';
@@ -45,8 +43,8 @@ void main() {
         sync_io.LogType.browser: 'INFO',
         sync_io.LogType.performance: 'ALL',
       },
-      'chromeOptions': <String, dynamic>{
-        'w3c': false,
+      'goog:chromeOptions': <String, dynamic>{
+        'w3c': true,
         'args': <String>[
           ...kChromeArgs,
           '--headless',
@@ -72,9 +70,9 @@ void main() {
         sync_io.LogType.browser: 'INFO',
         sync_io.LogType.performance: 'ALL',
       },
-      'chromeOptions': <String, dynamic>{
+      'goog:chromeOptions': <String, dynamic>{
         'binary': chromeBinary,
-        'w3c': false,
+        'w3c': true,
         'args': kChromeArgs,
         'perfLoggingPrefs': <String, String>{
           'traceCategories':
@@ -102,8 +100,8 @@ void main() {
         sync_io.LogType.browser: 'INFO',
         sync_io.LogType.performance: 'ALL',
       },
-      'chromeOptions': <String, dynamic>{
-        'w3c': false,
+      'goog:chromeOptions': <String, dynamic>{
+        'w3c': true,
         'args': <String>[
           ...kChromeArgs,
           '--autoplay-policy=no-user-gesture-required',
@@ -260,6 +258,29 @@ void main() {
     WebRunnerFactory: () => FakeWebRunnerFactory(),
   });
 
+  testUsingContext('WebDriverService can start an app with a launch url provided', () async {
+    final WebDriverService service = setUpDriverService();
+    final FakeDevice device = FakeDevice();
+    const String testUrl = 'http://localhost:1234/test';
+    await service.start(BuildInfo.profile, device, DebuggingOptions.enabled(BuildInfo.profile, webLaunchUrl: testUrl), true);
+    await service.stop();
+    expect(service.webUri, Uri.parse(testUrl));
+  }, overrides: <Type, Generator>{
+    WebRunnerFactory: () => FakeWebRunnerFactory(),
+  });
+
+  testUsingContext('WebDriverService will throw when an invalid launch url is provided', () async {
+    final WebDriverService service = setUpDriverService();
+    final FakeDevice device = FakeDevice();
+    const String invalidTestUrl = '::INVALID_URL::';
+    await expectLater(
+      service.start(BuildInfo.profile, device, DebuggingOptions.enabled(BuildInfo.profile, webLaunchUrl: invalidTestUrl), true),
+      throwsA(isA<FormatException>()),
+    );
+  }, overrides: <Type, Generator>{
+    WebRunnerFactory: () => FakeWebRunnerFactory(),
+  });
+
   testUsingContext('WebDriverService forwards exception when run future fails before app starts', () async {
     final WebDriverService service = setUpDriverService();
     final Device device = FakeDevice();
@@ -282,7 +303,7 @@ class FakeWebRunnerFactory implements WebRunnerFactory {
   final bool doResolveToError;
 
   @override
-  ResidentRunner createWebRunner(FlutterDevice device, {String target, bool stayResident, FlutterProject flutterProject, bool ipv6, DebuggingOptions debuggingOptions, UrlTunneller urlTunneller, Logger logger, FileSystem fileSystem, SystemClock systemClock, Usage usage, bool machine = false}) {
+  ResidentRunner createWebRunner(FlutterDevice device, {String? target, bool? stayResident, FlutterProject? flutterProject, bool? ipv6, DebuggingOptions? debuggingOptions, UrlTunneller? urlTunneller, Logger? logger, FileSystem? fileSystem, SystemClock? systemClock, Usage? usage, bool machine = false}) {
     expect(stayResident, isTrue);
     return FakeResidentRunner(
       doResolveToError: doResolveToError,
@@ -292,12 +313,12 @@ class FakeWebRunnerFactory implements WebRunnerFactory {
 
 class FakeResidentRunner extends Fake implements ResidentRunner {
   FakeResidentRunner({
-    this.doResolveToError,
+    required this.doResolveToError,
   }) {
     instance = this;
   }
 
-  static FakeResidentRunner instance;
+  static late FakeResidentRunner instance;
 
   final bool doResolveToError;
   final Completer<int> _exitCompleter = Completer<int>();
@@ -308,10 +329,10 @@ class FakeResidentRunner extends Fake implements ResidentRunner {
 
   @override
   Future<int> run({
-    Completer<DebugConnectionInfo> connectionInfoCompleter,
-    Completer<void> appStartedCompleter,
+    Completer<DebugConnectionInfo>? connectionInfoCompleter,
+    Completer<void>? appStartedCompleter,
     bool enableDevTools = false,
-    String route,
+    String? route,
   }) async {
     callLog.add('run');
 
@@ -319,7 +340,7 @@ class FakeResidentRunner extends Fake implements ResidentRunner {
       return Future<int>.error('This is a test error');
     }
 
-    appStartedCompleter.complete();
+    appStartedCompleter?.complete();
     // Emulate stayResident by completing after exitApp is called.
     return _exitCompleter.future;
   }
@@ -327,7 +348,7 @@ class FakeResidentRunner extends Fake implements ResidentRunner {
   @override
   Future<void> exitApp() async {
     callLog.add('exitApp');
-    _exitCompleter.complete();
+    _exitCompleter.complete(0);
   }
 
   @override

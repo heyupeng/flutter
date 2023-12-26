@@ -2,21 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:ui' as ui show BoxHeightStyle, BoxWidthStyle;
+
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import 'adaptive_text_selection_toolbar.dart';
 import 'input_decorator.dart';
 import 'text_field.dart';
 import 'theme.dart';
 
-export 'package:flutter/services.dart' show SmartQuotesType, SmartDashesType;
+export 'package:flutter/services.dart' show SmartDashesType, SmartQuotesType;
 
 /// A [FormField] that contains a [TextField].
 ///
 /// This is a convenience widget that wraps a [TextField] widget in a
 /// [FormField].
 ///
-/// A [Form] ancestor is not required. The [Form] simply makes it easier to
+/// A [Form] ancestor is not required. The [Form] allows one to
 /// save, reset, or validate multiple fields at once. To use without a [Form],
 /// pass a `GlobalKey<FormFieldState>` (see [GlobalKey]) to the constructor and use
 /// [GlobalKey.currentState] to save or reset the form field.
@@ -110,6 +114,10 @@ class TextFormField extends FormField<String> {
     TextAlignVertical? textAlignVertical,
     bool autofocus = false,
     bool readOnly = false,
+    @Deprecated(
+      'Use `contextMenuBuilder` instead. '
+      'This feature was deprecated after v3.3.0-0.5.pre.',
+    )
     ToolbarOptions? toolbarOptions,
     bool? showCursor,
     String obscuringCharacter = '•',
@@ -123,8 +131,9 @@ class TextFormField extends FormField<String> {
     int? minLines,
     bool expands = false,
     int? maxLength,
-    ValueChanged<String>? onChanged,
+    this.onChanged,
     GestureTapCallback? onTap,
+    TapRegionCallback? onTapOutside,
     VoidCallback? onEditingComplete,
     ValueChanged<String>? onFieldSubmitted,
     super.onSaved,
@@ -147,29 +156,33 @@ class TextFormField extends FormField<String> {
     super.restorationId,
     bool enableIMEPersonalizedLearning = true,
     MouseCursor? mouseCursor,
+    EditableTextContextMenuBuilder? contextMenuBuilder = _defaultContextMenuBuilder,
+    SpellCheckConfiguration? spellCheckConfiguration,
+    TextMagnifierConfiguration? magnifierConfiguration,
+    UndoHistoryController? undoController,
+    AppPrivateCommandCallback? onAppPrivateCommand,
+    bool? cursorOpacityAnimates,
+    ui.BoxHeightStyle selectionHeightStyle = ui.BoxHeightStyle.tight,
+    ui.BoxWidthStyle selectionWidthStyle = ui.BoxWidthStyle.tight,
+    DragStartBehavior dragStartBehavior = DragStartBehavior.start,
+    ContentInsertionConfiguration? contentInsertionConfiguration,
+    Clip clipBehavior = Clip.hardEdge,
+    bool scribbleEnabled = true,
+    bool canRequestFocus = true,
   }) : assert(initialValue == null || controller == null),
-       assert(textAlign != null),
-       assert(autofocus != null),
-       assert(readOnly != null),
-       assert(obscuringCharacter != null && obscuringCharacter.length == 1),
-       assert(obscureText != null),
-       assert(autocorrect != null),
-       assert(enableSuggestions != null),
-       assert(scrollPadding != null),
+       assert(obscuringCharacter.length == 1),
        assert(maxLines == null || maxLines > 0),
        assert(minLines == null || minLines > 0),
        assert(
          (maxLines == null) || (minLines == null) || (maxLines >= minLines),
          "minLines can't be greater than maxLines",
        ),
-       assert(expands != null),
        assert(
          !expands || (maxLines == null && minLines == null),
          'minLines and maxLines must be null when expands is true.',
        ),
        assert(!obscureText || maxLines == 1, 'Obscured fields cannot be multiline.'),
        assert(maxLength == null || maxLength == TextField.noMaxLength || maxLength > 0),
-       assert(enableIMEPersonalizedLearning != null),
        super(
          initialValue: controller != null ? controller.text : (initialValue ?? ''),
          enabled: enabled ?? decoration?.enabled ?? true,
@@ -180,9 +193,7 @@ class TextFormField extends FormField<String> {
                .applyDefaults(Theme.of(field.context).inputDecorationTheme);
            void onChangedHandler(String value) {
              field.didChange(value);
-             if (onChanged != null) {
-               onChanged(value);
-             }
+             onChanged?.call(value);
            }
            return UnmanagedRestorationScope(
              bucket: field.bucket,
@@ -216,6 +227,7 @@ class TextFormField extends FormField<String> {
                maxLength: maxLength,
                onChanged: onChangedHandler,
                onTap: onTap,
+               onTapOutside: onTapOutside,
                onEditingComplete: onEditingComplete,
                onSubmitted: onFieldSubmitted,
                inputFormatters: inputFormatters,
@@ -234,6 +246,19 @@ class TextFormField extends FormField<String> {
                scrollController: scrollController,
                enableIMEPersonalizedLearning: enableIMEPersonalizedLearning,
                mouseCursor: mouseCursor,
+               contextMenuBuilder: contextMenuBuilder,
+               spellCheckConfiguration: spellCheckConfiguration,
+               magnifierConfiguration: magnifierConfiguration,
+               undoController: undoController,
+               onAppPrivateCommand: onAppPrivateCommand,
+               cursorOpacityAnimates: cursorOpacityAnimates,
+               selectionHeightStyle: selectionHeightStyle,
+               selectionWidthStyle: selectionWidthStyle,
+               dragStartBehavior: dragStartBehavior,
+               contentInsertionConfiguration: contentInsertionConfiguration,
+               clipBehavior: clipBehavior,
+               scribbleEnabled: scribbleEnabled,
+               canRequestFocus: canRequestFocus,
              ),
            );
          },
@@ -244,6 +269,18 @@ class TextFormField extends FormField<String> {
   /// If null, this widget will create its own [TextEditingController] and
   /// initialize its [TextEditingController.text] with [initialValue].
   final TextEditingController? controller;
+
+  /// {@template flutter.material.TextFormField.onChanged}
+  /// Called when the user initiates a change to the TextField's
+  /// value: when they have inserted or deleted text or reset the form.
+  /// {@endtemplate}
+  final ValueChanged<String>? onChanged;
+
+  static Widget _defaultContextMenuBuilder(BuildContext context, EditableTextState editableTextState) {
+    return AdaptiveTextSelectionToolbar.editableText(
+      editableTextState: editableTextState,
+    );
+  }
 
   @override
   FormFieldState<String> createState() => _TextFormFieldState();
@@ -332,10 +369,11 @@ class _TextFormFieldState extends FormFieldState<String> {
 
   @override
   void reset() {
-    // setState will be called in the superclass, so even though state is being
-    // manipulated, no setState call is needed here.
+    // Set the controller value before calling super.reset() to let
+    // _handleControllerChanged suppress the change.
     _effectiveController.text = widget.initialValue ?? '';
     super.reset();
+    _textFormField.onChanged?.call(_effectiveController.text);
   }
 
   void _handleControllerChanged() {

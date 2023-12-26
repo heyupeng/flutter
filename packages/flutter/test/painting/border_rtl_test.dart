@@ -6,8 +6,6 @@ import 'package:flutter/foundation.dart' show DiagnosticLevel, FlutterError;
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../rendering/mock_canvas.dart';
-
 class SillyBorder extends BoxBorder {
   const SillyBorder();
 
@@ -142,8 +140,7 @@ void main() {
       '   BoxBorder.lerp() was called with two objects of type SillyBorder\n'
       '   and Border:\n'
       '     SillyBorder()\n'
-      '     Border.all(BorderSide(Color(0xff000000), 0.0,\n'
-      '   BorderStyle.none))\n'
+      '     Border.all(BorderSide(width: 0.0, style: none))\n'
       '   However, only Border and BorderDirectional classes are supported\n'
       '   by this method.\n'
       '   For a more general interpolation method, consider using\n'

@@ -5,6 +5,7 @@
 // This file is run as part of a reduced test set in CI on Mac and Windows
 // machines.
 @Tags(<String>['reduced-test-set'])
+library;
 
 import 'dart:math';
 import 'dart:ui';
@@ -15,7 +16,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../rendering/mock_canvas.dart';
 import '../widgets/semantics_tester.dart';
 
 void main() {
@@ -123,6 +123,23 @@ void main() {
     final DefaultTextStyle widget = tester.widget(find.byType(DefaultTextStyle));
 
     expect(widget.style.color!.withAlpha(255), CupertinoColors.systemRed.color);
+  });
+
+  testWidgets('Dialog default action style', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      CupertinoTheme(
+      data: const CupertinoThemeData(
+        primaryColor: CupertinoColors.systemGreen,
+      ),
+      child: boilerplate(const CupertinoDialogAction(
+        child: Text('Ok'),
+      )),
+      ),
+    );
+
+    final DefaultTextStyle widget = tester.widget(find.byType(DefaultTextStyle));
+
+    expect(widget.style.color!.withAlpha(255), CupertinoColors.systemGreen.color);
   });
 
   testWidgets('Dialog dark theme', (WidgetTester tester) async {
@@ -327,11 +344,9 @@ void main() {
     // regular font. However, when using the test font, "Cancel" becomes 2 lines which
     // is why the height we're verifying for "Cancel" is larger than "OK".
 
-    // TODO(yjbanov): https://github.com/flutter/flutter/issues/99933
-    //                A bug in the HTML renderer and/or Chrome 96+ causes a
-    //                discrepancy in the paragraph height.
-    const bool hasIssue99933 = kIsWeb && !bool.fromEnvironment('FLUTTER_WEB_USE_SKIA');
-    expect(tester.getSize(find.text('The Title')), equals(const Size(270.0, hasIssue99933 ? 133 : 132.0)));
+    if (!kIsWeb || isCanvasKit) { // https://github.com/flutter/flutter/issues/99933
+      expect(tester.getSize(find.text('The Title')), equals(const Size(270.0, 132.0)));
+    }
     expect(tester.getTopLeft(find.text('The Title')), equals(const Offset(265.0, 80.0 + 24.0)));
     expect(tester.getSize(find.widgetWithText(CupertinoDialogAction, 'Cancel')), equals(const Size(310.0, 148.0)));
     expect(tester.getSize(find.widgetWithText(CupertinoDialogAction, 'OK')), equals(const Size(310.0, 98.0)));
@@ -571,7 +586,7 @@ void main() {
     await tester.pumpWidget(
       createAppWithButtonThatLaunchesDialog(
         dialogBuilder: (BuildContext context) {
-          dividerWidth = 1.0 / MediaQuery.of(context).devicePixelRatio;
+          dividerWidth = 1.0 / MediaQuery.devicePixelRatioOf(context);
           return CupertinoAlertDialog(
             title: const Text('The Title'),
             content: const Text('The message'),
@@ -616,7 +631,7 @@ void main() {
     await tester.pumpWidget(
       createAppWithButtonThatLaunchesDialog(
         dialogBuilder: (BuildContext context) {
-          dividerThickness = 1.0 / MediaQuery.of(context).devicePixelRatio;
+          dividerThickness = 1.0 / MediaQuery.devicePixelRatioOf(context);
           return CupertinoAlertDialog(
             title: const Text('The Title'),
             content: const Text('The message'),
@@ -824,7 +839,7 @@ void main() {
     await tester.pumpWidget(
       createAppWithButtonThatLaunchesDialog(
         dialogBuilder: (BuildContext context) {
-          dividerThickness = 1.0 / MediaQuery.of(context).devicePixelRatio;
+          dividerThickness = 1.0 / MediaQuery.devicePixelRatioOf(context);
           return CupertinoAlertDialog(
             title: const Text('The Title'),
             content: const Text('The message'),
@@ -927,7 +942,7 @@ void main() {
     );
 
     // We must explicitly cause an "up" gesture to avoid a crash.
-    // todo(mattcarroll) remove this call, https://github.com/flutter/flutter/issues/19540
+    // TODO(mattcarroll): remove this call, https://github.com/flutter/flutter/issues/19540
     await gesture.up();
   });
 
@@ -1162,9 +1177,10 @@ void main() {
     expect(tester.getRect(find.byType(Placeholder)), placeholderRectWithoutInsets.translate(10, 10));
   });
 
-  testWidgets('Default cupertino dialog golden', (WidgetTester tester) async {
+  testWidgets('Material2 - Default cupertino dialog golden', (WidgetTester tester) async {
     await tester.pumpWidget(
       createAppWithButtonThatLaunchesDialog(
+        useMaterial3: false,
         dialogBuilder: (BuildContext context) {
           return MediaQuery(
             data: MediaQuery.of(context).copyWith(textScaleFactor: 3.0),
@@ -1188,7 +1204,38 @@ void main() {
 
     await expectLater(
       find.byType(CupertinoAlertDialog),
-      matchesGoldenFile('dialog_test.cupertino.default.png'),
+      matchesGoldenFile('m2_dialog_test.cupertino.default.png'),
+    );
+  });
+
+  testWidgets('Material3 - Default cupertino dialog golden', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      createAppWithButtonThatLaunchesDialog(
+        useMaterial3: true,
+        dialogBuilder: (BuildContext context) {
+          return MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaleFactor: 3.0),
+            child: const RepaintBoundary(
+              child: CupertinoAlertDialog(
+                title: Text('Title'),
+                content: Text('text'),
+                actions: <Widget>[
+                  CupertinoDialogAction(child: Text('No')),
+                  CupertinoDialogAction(child: Text('OK')),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    await tester.tap(find.text('Go'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(CupertinoAlertDialog),
+      matchesGoldenFile('m3_dialog_test.cupertino.default.png'),
     );
   });
 
@@ -1229,6 +1276,7 @@ void main() {
       label: 'Custom label',
       flags: <SemanticsFlag>[SemanticsFlag.namesRoute],
     )));
+    semantics.dispose();
   });
 
   testWidgets('CupertinoDialogRoute is state restorable', (WidgetTester tester) async {
@@ -1504,8 +1552,10 @@ RenderBox findScrollableActionsSectionRenderBox(WidgetTester tester) {
 
 Widget createAppWithButtonThatLaunchesDialog({
   required WidgetBuilder dialogBuilder,
+  bool? useMaterial3,
 }) {
   return MaterialApp(
+    theme: ThemeData(useMaterial3: useMaterial3),
     home: Material(
       child: Center(
         child: Builder(builder: (BuildContext context) {
@@ -1548,6 +1598,7 @@ Widget createAppWithCenteredButton(Widget child) {
 class _RestorableDialogTestWidget extends StatelessWidget {
   const _RestorableDialogTestWidget();
 
+  @pragma('vm:entry-point')
   static Route<Object?> _dialogBuilder(BuildContext context, Object? arguments) {
     return CupertinoDialogRoute<void>(
       context: context,

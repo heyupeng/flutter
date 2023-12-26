@@ -19,6 +19,12 @@ Future<void> main() async {
       section('Lint integration_test');
 
       await inDirectory(tempDir, () async {
+        // Update pod repo.
+        await exec(
+          'pod',
+          <String>['repo', 'update'],
+        );
+
         // Relative to this script.
         final String flutterRoot = path.dirname(path.dirname(path.dirname(path.dirname(path.dirname(path.fromUri(Platform.script))))));
         print('Flutter root at $flutterRoot');
@@ -31,28 +37,23 @@ Future<void> main() async {
             'lib',
             'lint',
             iosintegrationTestPodspec,
-            '--configuration=Debug', // Release targets unsupported arm64 simulators. Use Debug to only build against targeted x86_64 simulator devices.
             '--use-libraries',
             '--verbose',
+            // TODO(cyanglaz): remove allow-warnings when https://github.com/flutter/flutter/issues/125812 is fixed.
+            // https://github.com/flutter/flutter/issues/125812
+            '--allow-warnings',
           ],
-          environment: <String, String>{
-            'LANG': 'en_US.UTF-8',
-          },
         );
 
         final String macosintegrationTestPodspec = path.join(integrationTestPackage, 'integration_test_macos', 'macos', 'integration_test_macos.podspec');
-        await exec(
-          'pod',
+        await _tryMacOSLint(
+          macosintegrationTestPodspec,
           <String>[
-            'lib',
-            'lint',
-            macosintegrationTestPodspec,
-            '--configuration=Debug', // Release targets unsupported arm64 Apple Silicon. Use Debug to only build against targeted x86_64 macOS.
             '--verbose',
+            // TODO(cyanglaz): remove allow-warnings when https://github.com/flutter/flutter/issues/125812 is fixed.
+            // https://github.com/flutter/flutter/issues/125812
+            '--allow-warnings',
           ],
-          environment: <String, String>{
-            'LANG': 'en_US.UTF-8',
-          },
         );
       });
 
@@ -84,13 +85,9 @@ Future<void> main() async {
             'lib',
             'lint',
             objcPodspecPath,
-            '--configuration=Debug', // Release targets unsupported arm64 simulators. Use Debug to only build against targeted x86_64 simulator devices.
             '--allow-warnings',
             '--verbose',
           ],
-          environment: <String, String>{
-            'LANG': 'en_US.UTF-8',
-          },
         );
       });
 
@@ -103,14 +100,10 @@ Future<void> main() async {
             'lib',
             'lint',
             objcPodspecPath,
-            '--configuration=Debug', // Release targets unsupported arm64 simulators. Use Debug to only build against targeted x86_64 simulator devices.
             '--allow-warnings',
             '--use-libraries',
             '--verbose',
           ],
-          environment: <String, String>{
-            'LANG': 'en_US.UTF-8',
-          },
         );
       });
 
@@ -141,14 +134,10 @@ Future<void> main() async {
           <String>[
             'lib',
             'lint',
-            '--configuration=Debug', // Release targets unsupported arm64 simulators. Use Debug to only build against targeted x86_64 simulator devices.
             swiftPodspecPath,
             '--allow-warnings',
             '--verbose',
           ],
-          environment: <String, String>{
-            'LANG': 'en_US.UTF-8',
-          },
         );
       });
 
@@ -161,14 +150,10 @@ Future<void> main() async {
             'lib',
             'lint',
             swiftPodspecPath,
-            '--configuration=Debug', // Release targets unsupported arm64 simulators. Use Debug to only build against targeted x86_64 simulator devices.
             '--allow-warnings',
             '--use-libraries',
             '--verbose',
           ],
-          environment: <String, String>{
-            'LANG': 'en_US.UTF-8',
-          },
         );
       });
 
@@ -176,41 +161,25 @@ Future<void> main() async {
 
       final String macOSPodspecPath = path.join(swiftPluginPath, 'macos', '$swiftPluginName.podspec');
       await inDirectory(tempDir, () async {
-        await exec(
-          'pod',
+        await _tryMacOSLint(
+          macOSPodspecPath,
           <String>[
-            'lib',
-            'lint',
-            macOSPodspecPath,
             '--allow-warnings',
             '--verbose',
           ],
-          environment: <String, String>{
-            'LANG': 'en_US.UTF-8',
-          },
-          // TODO(jmagman): Flutter cannot build against ARM https://github.com/flutter/flutter/issues/69221
-          canFail: true,
         );
       });
 
       section('Lint Swift macOS podspec plugin as library');
 
       await inDirectory(tempDir, () async {
-        await exec(
-          'pod',
+        await _tryMacOSLint(
+          macOSPodspecPath,
           <String>[
-            'lib',
-            'lint',
-            macOSPodspecPath,
             '--allow-warnings',
             '--use-libraries',
             '--verbose',
           ],
-          environment: <String, String>{
-            'LANG': 'en_US.UTF-8',
-          },
-          // TODO(jmagman): Flutter cannot build against ARM https://github.com/flutter/flutter/issues/69221
-          canFail: true,
         );
       });
 
@@ -554,4 +523,33 @@ void _validateMacOSPodfile(String appPath) {
     'test_plugin_swift',
     'macos',
   ));
+}
+
+Future<void> _tryMacOSLint(
+  String podspecPath,
+  List<String> extraArguments,
+) async {
+  final StringBuffer lintStdout = StringBuffer();
+  try {
+    await eval(
+      'pod',
+      <String>[
+        'lib',
+        'lint',
+        podspecPath,
+        ...extraArguments,
+      ],
+      stdout: lintStdout,
+    );
+  } on BuildFailedError {
+    // Temporarily ignore errors due to DT_TOOLCHAIN_DIR if it's the only error.
+    // This error was introduced with Xcode 15. Fix was made in Cocoapods, but
+    // is not in an official release yet.
+    // TODO(vashworth): Stop ignoring when https://github.com/flutter/flutter/issues/133584 is complete.
+    final String lintResult = lintStdout.toString();
+    if (!(lintResult.contains('error: DT_TOOLCHAIN_DIR cannot be used to evaluate') &&
+        lintResult.contains('did not pass validation, due to 1 error'))) {
+      rethrow;
+    }
+  }
 }

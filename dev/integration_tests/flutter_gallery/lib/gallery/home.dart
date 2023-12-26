@@ -79,7 +79,7 @@ class _CategoryItem extends StatelessWidget {
               child: Text(
                 category!.name,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.subtitle1!.copyWith(
+                style: theme.textTheme.titleMedium!.copyWith(
                   fontFamily: 'GoogleSans',
                   color: isDark ? Colors.white : _kFlutterBlue,
                 ),
@@ -178,7 +178,8 @@ class _DemoItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
-    final double textScaleFactor = MediaQuery.textScaleFactorOf(context);
+    // ignore: deprecated_member_use, https://github.com/flutter/flutter/issues/128825
+    final double textScaleFactor = MediaQuery.textScalerOf(context).textScaleFactor;
     return RawMaterialButton(
       splashColor: theme.primaryColor.withOpacity(0.12),
       highlightColor: Colors.transparent,
@@ -206,14 +207,14 @@ class _DemoItem extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     demo!.title,
-                    style: theme.textTheme.subtitle1!.copyWith(
+                    style: theme.textTheme.titleMedium!.copyWith(
                       color: isDark ? Colors.white : const Color(0xFF202124),
                     ),
                   ),
                   if (demo!.subtitle != null)
                     Text(
                       demo!.subtitle!,
-                      style: theme.textTheme.bodyText2!.copyWith(
+                      style: theme.textTheme.bodyMedium!.copyWith(
                         color: isDark ? Colors.white : const Color(0xFF60646B)
                       ),
                     ),
@@ -324,14 +325,14 @@ class _GalleryHomeState extends State<GalleryHome> with SingleTickerProviderStat
       backgroundColor: isDark ? _kFlutterBlue : theme.primaryColor,
       body: SafeArea(
         bottom: false,
-        child: WillPopScope(
-          onWillPop: () {
-            // Pop the category page if Android back button is pressed.
-            if (_category != null) {
-              setState(() => _category = null);
-              return Future<bool>.value(false);
+        child: PopScope(
+          canPop: _category == null,
+          onPopInvoked: (bool didPop) {
+            if (didPop) {
+              return;
             }
-            return Future<bool>.value(true);
+            // Pop the category page if Android back button is pressed.
+            setState(() => _category = null);
           },
           child: Backdrop(
             backTitle: const Text('Options'),

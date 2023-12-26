@@ -5,6 +5,7 @@
 // This file is run as part of a reduced test set in CI on Mac and Windows
 // machines.
 @Tags(<String>['reduced-test-set'])
+library;
 
 import 'dart:async';
 import 'dart:io';
@@ -33,6 +34,53 @@ void main() {
 
   tearDown(() {
     imageCache.maximumSize = originalCacheSize;
+  });
+
+  testWidgets('Verify Image does not use disposed handles', (WidgetTester tester) async {
+    final ui.Image image100x100 = (await tester.runAsync(() async => createTestImage(width: 100, height: 100)))!;
+
+    final _TestImageProvider imageProvider1 = _TestImageProvider();
+    final _TestImageProvider imageProvider2 = _TestImageProvider();
+
+    final ValueNotifier<_TestImageProvider> imageListenable = ValueNotifier<_TestImageProvider>(imageProvider1);
+    final ValueNotifier<int> innerListenable = ValueNotifier<int>(0);
+
+    bool imageLoaded = false;
+
+    await tester.pumpWidget(ValueListenableBuilder<_TestImageProvider>(
+      valueListenable: imageListenable,
+      builder: (BuildContext context, _TestImageProvider image, Widget? child) => Image(
+        image: image,
+        frameBuilder: (BuildContext context, Widget child, int? frame, bool wasSynchronouslyLoaded) {
+          if (frame == 0) {
+            imageLoaded = true;
+          }
+          return LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) => ValueListenableBuilder<int>(
+              valueListenable: innerListenable,
+              builder: (BuildContext context, int value, Widget? valueListenableChild) => KeyedSubtree(
+                key: UniqueKey(),
+                child: child,
+              ),
+            ),
+          );
+        },
+      ),
+    ));
+
+    imageLoaded = false;
+    imageProvider1.complete(image10x10);
+    await tester.idle();
+    await tester.pump();
+    expect(imageLoaded, true);
+
+    imageLoaded = false;
+    imageListenable.value = imageProvider2;
+    innerListenable.value += 1;
+    imageProvider2.complete(image100x100);
+    await tester.idle();
+    await tester.pump();
+    expect(imageLoaded, true);
   });
 
   testWidgets('Verify Image resets its RenderImage when changing providers', (WidgetTester tester) async {
@@ -453,12 +501,12 @@ void main() {
     final _TestImageProvider imageProvider = _TestImageProvider();
     await tester.pumpWidget(Image(image: imageProvider, excludeFromSemantics: true));
     final State<Image> image = tester.state/*State<Image>*/(find.byType(Image));
-    expect(image.toString(), equalsIgnoringHashCodes('_ImageState#00000(stream: ImageStream#00000(OneFrameImageStreamCompleter#00000, unresolved, 2 listeners), pixels: null, loadingProgress: null, frameNumber: null, wasSynchronouslyLoaded: false)'));
+    expect(image.toString(), equalsIgnoringHashCodes('_ImageState#00000(stream: ImageStream#00000(OneFrameImageStreamCompleter#00000, unresolved, 2 listeners, 0 ephemeralErrorListeners), pixels: null, loadingProgress: null, frameNumber: null, wasSynchronouslyLoaded: false)'));
     imageProvider.complete(image100x100);
     await tester.pump();
-    expect(image.toString(), equalsIgnoringHashCodes('_ImageState#00000(stream: ImageStream#00000(OneFrameImageStreamCompleter#00000, $imageString @ 1.0x, 1 listener), pixels: $imageString @ 1.0x, loadingProgress: null, frameNumber: 0, wasSynchronouslyLoaded: false)'));
+    expect(image.toString(), equalsIgnoringHashCodes('_ImageState#00000(stream: ImageStream#00000(OneFrameImageStreamCompleter#00000, $imageString @ 1.0x, 1 listener, 0 ephemeralErrorListeners), pixels: $imageString @ 1.0x, loadingProgress: null, frameNumber: 0, wasSynchronouslyLoaded: false)'));
     await tester.pumpWidget(Container());
-    expect(image.toString(), equalsIgnoringHashCodes('_ImageState#00000(lifecycle state: defunct, not mounted, stream: ImageStream#00000(OneFrameImageStreamCompleter#00000, $imageString @ 1.0x, 0 listeners), pixels: null, loadingProgress: null, frameNumber: 0, wasSynchronouslyLoaded: false)'));
+    expect(image.toString(), equalsIgnoringHashCodes('_ImageState#00000(lifecycle state: defunct, not mounted, stream: ImageStream#00000(OneFrameImageStreamCompleter#00000, $imageString @ 1.0x, 0 listeners, 0 ephemeralErrorListeners), pixels: null, loadingProgress: null, frameNumber: 0, wasSynchronouslyLoaded: false)'));
   });
 
   testWidgets('Stream completer errors can be listened to by attaching before resolving', (WidgetTester tester) async {
@@ -1950,7 +1998,13 @@ void main() {
       find.byKey(key),
       matchesGoldenFile('image_test.missing.1.png'),
     );
-    expect(tester.takeException().toString(), startsWith('Unable to load asset: '));
+    expect(
+      tester.takeException().toString(),
+      equals(
+        'Unable to load asset: "missing-asset".\n'
+        'The asset does not exist or has empty data.',
+      ),
+    );
     await tester.pump();
     await expectLater(
       find.byKey(key),
@@ -1977,9 +2031,7 @@ void main() {
 
 @immutable
 class _ConfigurationAwareKey {
-  const _ConfigurationAwareKey(this.provider, this.configuration)
-    : assert(provider != null),
-      assert(configuration != null);
+  const _ConfigurationAwareKey(this.provider, this.configuration);
 
   final ImageProvider provider;
   final ImageConfiguration configuration;
@@ -2031,7 +2083,7 @@ class _TestImageProvider extends ImageProvider<Object> {
   }
 
   @override
-  ImageStreamCompleter load(Object key, DecoderCallback decode) {
+  ImageStreamCompleter loadImage(Object key, ImageDecoderCallback decode) {
     _loadCallCount += 1;
     return _streamCompleter;
   }
@@ -2121,7 +2173,7 @@ class _DebouncingImageProvider extends ImageProvider<Object> {
   Future<Object> obtainKey(ImageConfiguration configuration) => imageProvider.obtainKey(configuration);
 
   @override
-  ImageStreamCompleter loadBuffer(Object key, DecoderBufferCallback decode) => imageProvider.loadBuffer(key, decode);
+  ImageStreamCompleter loadImage(Object key, ImageDecoderCallback decode) => imageProvider.loadImage(key, decode);
 }
 
 class _FailingImageProvider extends ImageProvider<int> {
@@ -2130,11 +2182,7 @@ class _FailingImageProvider extends ImageProvider<int> {
     this.failOnLoad = false,
     required this.throws,
     required this.image,
-  }) : assert(failOnLoad != null),
-       assert(failOnObtainKey != null),
-       assert(failOnLoad == true || failOnObtainKey == true),
-       assert(throws != null),
-       assert(image != null);
+  }) : assert(failOnLoad || failOnObtainKey);
 
   final bool failOnObtainKey;
   final bool failOnLoad;
@@ -2150,7 +2198,7 @@ class _FailingImageProvider extends ImageProvider<int> {
   }
 
   @override
-  ImageStreamCompleter load(int key, DecoderCallback decode) {
+  ImageStreamCompleter loadImage(int key, ImageDecoderCallback decode) {
     if (failOnLoad) {
       throw throws;
     }

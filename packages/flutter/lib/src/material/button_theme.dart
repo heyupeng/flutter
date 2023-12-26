@@ -13,6 +13,9 @@ import 'material_state.dart';
 import 'theme.dart';
 import 'theme_data.dart' show MaterialTapTargetSize;
 
+// Examples can assume:
+// late BuildContext context;
+
 /// Used with [ButtonTheme] and [ButtonThemeData] to define a button's base
 /// colors, and the defaults for the button's minimum size, internal padding,
 /// and shape.
@@ -20,7 +23,7 @@ enum ButtonTextTheme {
   /// Button text is black or white depending on [ThemeData.brightness].
   normal,
 
-  /// Button text is [ThemeData.accentColor].
+  /// Button text is [ColorScheme.secondary].
   accent,
 
   /// Button text is based on [ThemeData.primaryColor].
@@ -45,9 +48,10 @@ enum ButtonBarLayoutBehavior {
 /// This class is planned to be deprecated in a future release.
 /// Please use one or more of these buttons and associated themes instead:
 ///
-///  * [TextButton], [TextButtonTheme], [TextButtonThemeData],
 ///  * [ElevatedButton], [ElevatedButtonTheme], [ElevatedButtonThemeData],
+///  * [FilledButton], [FilledButtonTheme], [FilledButtonThemeData],
 ///  * [OutlinedButton], [OutlinedButtonTheme], [OutlinedButtonThemeData]
+///  * [TextButton], [TextButtonTheme], [TextButtonThemeData],
 ///
 /// A button theme can be specified as part of the overall Material theme
 /// using [ThemeData.buttonTheme]. The Material theme's button theme data
@@ -62,9 +66,6 @@ enum ButtonBarLayoutBehavior {
 ///    depend on any inherited themes.
 class ButtonTheme extends InheritedTheme {
   /// Creates a button theme.
-  ///
-  /// The [textTheme], [minWidth], [height], and [colorScheme] arguments
-  /// must not be null.
   ButtonTheme({
     super.key,
     ButtonTextTheme textTheme = ButtonTextTheme.normal,
@@ -83,11 +84,8 @@ class ButtonTheme extends InheritedTheme {
     ColorScheme? colorScheme,
     MaterialTapTargetSize? materialTapTargetSize,
     required super.child,
-  }) : assert(textTheme != null),
-       assert(minWidth != null && minWidth >= 0.0),
-       assert(height != null && height >= 0.0),
-       assert(alignedDropdown != null),
-       assert(layoutBehavior != null),
+  }) : assert(minWidth >= 0.0),
+       assert(height >= 0.0),
        data = ButtonThemeData(
          textTheme: textTheme,
          minWidth: minWidth,
@@ -107,13 +105,11 @@ class ButtonTheme extends InheritedTheme {
        );
 
   /// Creates a button theme from [data].
-  ///
-  /// The [data] argument must not be null.
   const ButtonTheme.fromButtonThemeData({
     super.key,
     required this.data,
     required super.child,
-  }) : assert(data != null);
+  });
 
   /// Specifies the color and geometry of buttons.
   final ButtonThemeData data;
@@ -167,9 +163,7 @@ class ButtonThemeData with Diagnosticable {
   /// Create a button theme object that can be used with [ButtonTheme]
   /// or [ThemeData].
   ///
-  /// The [textTheme], [minWidth], [height], [alignedDropdown], and
-  /// [layoutBehavior] parameters must not be null. The [minWidth] and
-  /// [height] parameters must greater than or equal to zero.
+  /// The [minWidth] and [height] parameters must greater than or equal to zero.
   ///
   /// The ButtonTheme's methods that have a [MaterialButton] parameter and
   /// have a name with a `get` prefix are used to configure a
@@ -190,11 +184,8 @@ class ButtonThemeData with Diagnosticable {
     Color? splashColor,
     this.colorScheme,
     MaterialTapTargetSize? materialTapTargetSize,
-  }) : assert(textTheme != null),
-       assert(minWidth != null && minWidth >= 0.0),
-       assert(height != null && height >= 0.0),
-       assert(alignedDropdown != null),
-       assert(layoutBehavior != null),
+  }) : assert(minWidth >= 0.0),
+       assert(height >= 0.0),
        _buttonColor = buttonColor,
        _disabledColor = disabledColor,
        _focusColor = focusColor,
@@ -231,15 +222,8 @@ class ButtonThemeData with Diagnosticable {
   /// Defaults to [ButtonBarLayoutBehavior.padded].
   final ButtonBarLayoutBehavior layoutBehavior;
 
-  /// Simply a convenience that returns [minWidth] and [height] as a
-  /// [BoxConstraints] object:
-  ///
-  /// ```dart
-  /// return BoxConstraints(
-  ///   minWidth: minWidth,
-  ///   minHeight: height,
-  /// );
-  /// ```
+  /// Convenience that returns [minWidth] and [height] as a
+  /// [BoxConstraints] object.
   BoxConstraints get constraints {
     return BoxConstraints(
       minWidth: minWidth,
@@ -258,7 +242,7 @@ class ButtonThemeData with Diagnosticable {
   ///    child (typically the button's label).
   EdgeInsetsGeometry get padding {
     if (_padding != null) {
-      return _padding!;
+      return _padding;
     }
     switch (textTheme) {
       case ButtonTextTheme.normal:
@@ -286,7 +270,7 @@ class ButtonThemeData with Diagnosticable {
   ///    [Material].
   ShapeBorder get shape {
     if (_shape != null) {
-      return _shape!;
+      return _shape;
     }
     switch (textTheme) {
       case ButtonTextTheme.normal:
@@ -385,13 +369,12 @@ class ButtonThemeData with Diagnosticable {
   /// A set of thirteen colors that can be used to derive the button theme's
   /// colors.
   ///
-  /// This property was added much later than the theme's set of highly
-  /// specific colors, like [ThemeData.buttonColor], [ThemeData.highlightColor],
-  /// [ThemeData.splashColor] etc.
+  /// This property was added much later than the theme's set of highly specific
+  /// colors, like [ThemeData.highlightColor] and [ThemeData.splashColor] etc.
   ///
-  /// The colors for new button classes can be defined exclusively in terms
-  /// of [colorScheme]. When it's possible, the existing buttons will
-  /// (continue to) gradually migrate to it.
+  /// The colors for new button classes can be defined exclusively in terms of
+  /// [colorScheme]. When it's possible, the existing buttons will (continue to)
+  /// gradually migrate to it.
   final ColorScheme? colorScheme;
 
   // The minimum size of a button's tap target.
@@ -547,7 +530,7 @@ class ButtonThemeData with Diagnosticable {
       switch (getTextTheme(button)) {
         case ButtonTextTheme.normal:
         case ButtonTextTheme.accent:
-          return _splashColor!;
+          return _splashColor;
         case ButtonTextTheme.primary:
           break;
       }
@@ -651,12 +634,8 @@ class ButtonThemeData with Diagnosticable {
       return button.padding!;
     }
 
-    if (button is MaterialButtonWithIconMixin) {
-      return const EdgeInsetsDirectional.only(start: 12.0, end: 16.0);
-    }
-
     if (_padding != null) {
-      return _padding!;
+      return _padding;
     }
 
     switch (getTextTheme(button)) {

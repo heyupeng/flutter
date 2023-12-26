@@ -52,14 +52,15 @@ class ProductCard extends StatelessWidget {
                 child: imageWidget,
               ),
               SizedBox(
-                height: kTextBoxHeight * MediaQuery.of(context).textScaleFactor,
+                // ignore: deprecated_member_use, https://github.com/flutter/flutter/issues/128825
+                height: kTextBoxHeight * MediaQuery.textScalerOf(context).textScaleFactor,
                 width: 121.0,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: <Widget>[
                     Text(
                       product == null ? '' : product!.name,
-                      style: theme.textTheme.button,
+                      style: theme.textTheme.labelLarge,
                       softWrap: false,
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -67,7 +68,7 @@ class ProductCard extends StatelessWidget {
                     const SizedBox(height: 4.0),
                     Text(
                       product == null ? '' : formatter.format(product!.price),
-                      style: theme.textTheme.caption,
+                      style: theme.textTheme.bodySmall,
                     ),
                   ],
                 ),
