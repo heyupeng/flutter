@@ -14,13 +14,13 @@ class PaintingBindingSpy extends BindingBase with SchedulerBinding, ServicesBind
   int get instantiateImageCodecCalledCount => counter;
 
   @override
-  Future<ui.Codec> instantiateImageCodec(Uint8List list, {int? cacheWidth, int? cacheHeight, bool allowUpscaling = false}) {
+  Future<ui.Codec> instantiateImageCodecWithSize(ui.ImmutableBuffer buffer, { ui.TargetImageSizeCallback? getTargetSize }) {
     counter++;
-    return ui.instantiateImageCodec(list);
+    return ui.instantiateImageCodecWithSize(buffer, getTargetSize: getTargetSize);
   }
 
   @override
-  // ignore: MUST_CALL_SUPER
+  // ignore: must_call_super
   void initLicenses() {
     // Do not include any licenses, because we're a test, and the LICENSE file
     // doesn't get generated for tests.

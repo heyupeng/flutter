@@ -62,12 +62,13 @@ class _DateTimePicker extends StatelessWidget {
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: selectedDate!,
+      initialDate: selectedDate,
       firstDate: DateTime(2015, 8),
       lastDate: DateTime(2101),
     );
-    if (picked != null && picked != selectedDate)
+    if (picked != null && picked != selectedDate) {
       selectDate!(picked);
+    }
   }
 
   Future<void> _selectTime(BuildContext context) async {
@@ -75,13 +76,14 @@ class _DateTimePicker extends StatelessWidget {
       context: context,
       initialTime: selectedTime!,
     );
-    if (picked != null && picked != selectedTime)
+    if (picked != null && picked != selectedTime) {
       selectTime!(picked);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final TextStyle? valueStyle = Theme.of(context).textTheme.headline6;
+    final TextStyle? valueStyle = Theme.of(context).textTheme.titleLarge;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: <Widget>[
@@ -118,9 +120,9 @@ class DateAndTimePickerDemo extends StatefulWidget {
 }
 
 class _DateAndTimePickerDemoState extends State<DateAndTimePickerDemo> {
-  DateTime _fromDate = DateTime.now();
+  DateTime? _fromDate = DateTime.now();
   TimeOfDay _fromTime = const TimeOfDay(hour: 7, minute: 28);
-  DateTime _toDate = DateTime.now();
+  DateTime? _toDate = DateTime.now();
   TimeOfDay _toTime = const TimeOfDay(hour: 8, minute: 28);
   final List<String> _allActivities = <String>['hiking', 'swimming', 'boating', 'fishing'];
   String? _activity = 'fishing';
@@ -145,13 +147,13 @@ class _DateAndTimePickerDemoState extends State<DateAndTimePickerDemo> {
                   labelText: 'Event name',
                   border: OutlineInputBorder(),
                 ),
-                style: Theme.of(context).textTheme.headline4,
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
               TextField(
                 decoration: const InputDecoration(
                   labelText: 'Location',
                 ),
-                style: Theme.of(context).textTheme.headline4!.copyWith(fontSize: 20.0),
+                style: Theme.of(context).textTheme.headlineMedium!.copyWith(fontSize: 20.0),
               ),
               _DateTimePicker(
                 labelText: 'From',

@@ -11,6 +11,9 @@ import 'bottom_navigation_bar.dart';
 import 'material_state.dart';
 import 'theme.dart';
 
+// Examples can assume:
+// late BuildContext context;
+
 /// Defines default property values for descendant [BottomNavigationBar]
 /// widgets.
 ///
@@ -167,11 +170,11 @@ class BottomNavigationBarThemeData with Diagnosticable {
 
   /// Linearly interpolate between two [BottomNavigationBarThemeData].
   ///
-  /// The argument `t` must not be null.
-  ///
   /// {@macro dart.ui.shadow.lerp}
   static BottomNavigationBarThemeData lerp(BottomNavigationBarThemeData? a, BottomNavigationBarThemeData? b, double t) {
-    assert(t != null);
+    if (identical(a, b) && a != null) {
+      return a;
+    }
     return BottomNavigationBarThemeData(
       backgroundColor: Color.lerp(a?.backgroundColor, b?.backgroundColor, t),
       elevation: lerpDouble(a?.elevation, b?.elevation, t),
@@ -271,13 +274,11 @@ class BottomNavigationBarThemeData with Diagnosticable {
 class BottomNavigationBarTheme extends InheritedWidget {
   /// Constructs a bottom navigation bar theme that configures all descendant
   /// [BottomNavigationBar] widgets.
-  ///
-  /// The [data] must not be null.
   const BottomNavigationBarTheme({
     super.key,
     required this.data,
     required super.child,
-  }) : assert(data != null);
+  });
 
   /// The properties used for all descendant [BottomNavigationBar] widgets.
   final BottomNavigationBarThemeData data;

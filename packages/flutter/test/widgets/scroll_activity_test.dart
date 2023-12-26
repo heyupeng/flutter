@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 
 List<Widget> children(int n) {
   return List<Widget>.generate(n, (int i) {
@@ -13,8 +15,9 @@ List<Widget> children(int n) {
 }
 
 void main() {
-  testWidgets('Scrolling with list view changes, leaving the overscroll', (WidgetTester tester) async {
+  testWidgetsWithLeakTracking('Scrolling with list view changes, leaving the overscroll', (WidgetTester tester) async {
     final ScrollController controller = ScrollController();
+    addTearDown(controller.dispose);
     await tester.pumpWidget(MaterialApp(home: ListView(controller: controller, children: children(30))));
     final double thirty = controller.position.maxScrollExtent;
     controller.jumpTo(thirty);
@@ -27,8 +30,9 @@ void main() {
     expect(controller.position.pixels, thirty + 100.0); // and ends up at the end
   });
 
-  testWidgets('Scrolling with list view changes, remaining overscrolled', (WidgetTester tester) async {
+  testWidgetsWithLeakTracking('Scrolling with list view changes, remaining overscrolled', (WidgetTester tester) async {
     final ScrollController controller = ScrollController();
+    addTearDown(controller.dispose);
     await tester.pumpWidget(MaterialApp(home: ListView(controller: controller, children: children(30))));
     final double thirty = controller.position.maxScrollExtent;
     controller.jumpTo(thirty);
@@ -41,7 +45,7 @@ void main() {
     expect(controller.position.pixels, thirty + 100.0); // and ends up at the end
   });
 
-  testWidgets('Ability to keep a PageView at the end manually (issue 62209)', (WidgetTester tester) async {
+  testWidgetsWithLeakTracking('Ability to keep a PageView at the end manually (issue 62209)', (WidgetTester tester) async {
     await tester.pumpWidget(const MaterialApp(home: PageView62209()));
     expect(find.text('Page 1'), findsOneWidget);
     expect(find.text('Page 100'), findsNothing);
@@ -126,6 +130,87 @@ void main() {
     await tester.drag(find.byType(PageView62209), const Offset(-800.0, 0.0));
     await tester.pump();
     expect(find.text('Page 9'), findsOneWidget);
+  });
+
+  testWidgetsWithLeakTracking('Pointer is not ignored during trackpad scrolling.', (WidgetTester tester) async {
+    final ScrollController controller = ScrollController();
+    addTearDown(controller.dispose);
+    int? lastTapped;
+    int? lastHovered;
+    await tester.pumpWidget(MaterialApp(
+      home: ListView(
+        controller: controller,
+        children: List<Widget>.generate(30, (int i) {
+          return SizedBox(height: 100.0, child: MouseRegion(
+            onHover: (PointerHoverEvent event) {
+              lastHovered = i;
+            },
+            child: GestureDetector(
+              onTap: () {
+                lastTapped = i;
+              },
+              child: Text('$i')
+            )
+          ));
+        })
+      )
+    ));
+    final TestGesture touchGesture = await tester.createGesture(kind: PointerDeviceKind.touch); // ignore: avoid_redundant_argument_values
+    // Try mouse hovering while scrolling by touch
+    await touchGesture.down(tester.getCenter(find.byType(ListView)));
+    await tester.pump();
+    await touchGesture.moveBy(const Offset(0, 200));
+    await tester.pump();
+    final TestGesture hoverGesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await hoverGesture.addPointer(
+      location: tester.getCenter(find.text('3'))
+    );
+    await hoverGesture.moveBy(const Offset(1, 1));
+    await hoverGesture.removePointer(
+      location: tester.getCenter(find.text('3'))
+    );
+    await tester.pumpAndSettle();
+    expect(controller.position.activity?.shouldIgnorePointer, isTrue); // Pointer is ignored for touch scrolling.
+    expect(lastHovered, isNull);
+    await touchGesture.up();
+    await tester.pump();
+    // Try mouse clicking during inertia after scrolling by touch
+    await tester.fling(find.byType(ListView), const Offset(0, -200), 1000);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(controller.position.activity?.shouldIgnorePointer, isTrue); // Pointer is ignored following touch scrolling.
+    await tester.tap(find.text('3'), warnIfMissed: false);
+    expect(lastTapped, isNull);
+    await tester.pumpAndSettle();
+
+    controller.jumpTo(0);
+    await tester.pump();
+    final TestGesture trackpadGesture = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+    // Try mouse hovering while scrolling with a trackpad
+    await trackpadGesture.panZoomStart(tester.getCenter(find.byType(ListView)));
+    await tester.pump();
+    await trackpadGesture.panZoomUpdate(tester.getCenter(find.byType(ListView)), pan: const Offset(0, 200));
+    await tester.pump();
+    await hoverGesture.addPointer(
+      location: tester.getCenter(find.text('3'))
+    );
+    await hoverGesture.moveBy(const Offset(1, 1));
+    await hoverGesture.removePointer(
+      location: tester.getCenter(find.text('3'))
+    );
+    await tester.pumpAndSettle();
+    expect(controller.position.activity?.shouldIgnorePointer, isFalse); // Pointer is not ignored for trackpad scrolling.
+    expect(lastHovered, equals(3));
+    await trackpadGesture.panZoomEnd();
+    await tester.pump();
+    // Try mouse clicking during inertia after scrolling with a trackpad
+    await tester.trackpadFling(find.byType(ListView), const Offset(0, -200), 1000);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(controller.position.activity?.shouldIgnorePointer, isFalse); // Pointer is not ignored following trackpad scrolling.
+    await tester.tap(find.text('3'));
+    expect(lastTapped, equals(3));
+    await tester.pumpAndSettle();
   });
 }
 

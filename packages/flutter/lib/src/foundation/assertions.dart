@@ -20,6 +20,8 @@ export 'stack_frame.dart' show StackFrame;
 // late bool draconisAmulet;
 // late Diagnosticable draconis;
 // void methodThatMayThrow() { }
+// class Trace implements StackTrace { late StackTrace vmTrace; }
+// class Chain implements StackTrace { Trace toTrace() => Trace(); }
 
 /// Signature for [FlutterError.onError] handler.
 typedef FlutterExceptionHandler = void Function(FlutterErrorDetails details);
@@ -46,15 +48,12 @@ typedef StackTraceDemangler = StackTrace Function(StackTrace details);
 ///  * [RepetitiveStackFrameFilter], which uses this class to compare against [StackFrame]s.
 @immutable
 class PartialStackFrame {
-  /// Creates a new [PartialStackFrame] instance. All arguments are required and
-  /// must not be null.
+  /// Creates a new [PartialStackFrame] instance.
   const PartialStackFrame({
     required this.package,
     required this.className,
     required this.method,
-  }) : assert(className != null),
-       assert(method != null),
-       assert(package != null);
+  });
 
   /// An `<asynchronous suspension>` line in a stack trace.
   static const PartialStackFrame asynchronousSuspension = PartialStackFrame(
@@ -126,8 +125,7 @@ class RepetitiveStackFrameFilter extends StackFilter {
   const RepetitiveStackFrameFilter({
     required this.frames,
     required this.replacement,
-  }) : assert(frames != null),
-       assert(replacement != null);
+  });
 
   /// The shape of this repetitive stack pattern.
   final List<PartialStackFrame> frames;
@@ -138,7 +136,7 @@ class RepetitiveStackFrameFilter extends StackFilter {
   /// The string to replace the frames with.
   ///
   /// If the same replacement string is used multiple times in a row, the
-  /// [FlutterError.defaultStackFilter] will simply update a counter after this
+  /// [FlutterError.defaultStackFilter] will insert a repeat count after this
   /// line rather than repeating it.
   final String replacement;
 
@@ -175,8 +173,7 @@ abstract class _ErrorDiagnostic extends DiagnosticsProperty<List<Object>> {
     String message, {
     DiagnosticsTreeStyle style = DiagnosticsTreeStyle.flat,
     DiagnosticLevel level = DiagnosticLevel.info,
-  }) : assert(message != null),
-       super(
+  }) : super(
          null,
          <Object>[message],
          showName: false,
@@ -215,8 +212,7 @@ abstract class _ErrorDiagnostic extends DiagnosticsProperty<List<Object>> {
     List<Object> messageParts, {
     DiagnosticsTreeStyle style = DiagnosticsTreeStyle.flat,
     DiagnosticLevel level = DiagnosticLevel.info,
-  }) : assert(messageParts != null),
-       super(
+  }) : super(
          null,
          messageParts,
          showName: false,
@@ -226,6 +222,13 @@ abstract class _ErrorDiagnostic extends DiagnosticsProperty<List<Object>> {
          level: level,
        );
 
+  @override
+  String toString({
+    TextTreeConfiguration? parentConfiguration,
+    DiagnosticLevel minLevel = DiagnosticLevel.info,
+  }) {
+    return valueToString(parentConfiguration: parentConfiguration);
+  }
 
   @override
   List<Object> get value => super.value!;
@@ -393,9 +396,6 @@ class FlutterErrorDetails with Diagnosticable {
   ///
   /// The framework calls this constructor when catching an exception that will
   /// subsequently be reported using [FlutterError.onError].
-  ///
-  /// The [exception] must not be null; other arguments can be left to
-  /// their default values.
   const FlutterErrorDetails({
     required this.exception,
     this.stack,
@@ -404,7 +404,7 @@ class FlutterErrorDetails with Diagnosticable {
     this.stackFilter,
     this.informationCollector,
     this.silent = false,
-  }) : assert(exception != null);
+  });
 
   /// Creates a copy of the error details but with the given fields replaced
   /// with new values.
@@ -670,9 +670,7 @@ class FlutterErrorDetails with Diagnosticable {
     super.debugFillProperties(properties);
     final DiagnosticsNode verb = ErrorDescription('thrown${ context != null ? ErrorDescription(" $context") : ""}');
     final Diagnosticable? diagnosticable = _exceptionToDiagnosticable();
-    if (exception is NullThrownError) { // ignore: deprecated_member_use
-      properties.add(ErrorDescription('The null value was $verb.'));
-    } else if (exception is num) {
+    if (exception is num) {
       properties.add(ErrorDescription('The number $exception was $verb.'));
     } else {
       final DiagnosticsNode errorName;
@@ -722,7 +720,7 @@ class FlutterErrorDetails with Diagnosticable {
             'provide substantially more information in this error message to help you determine '
             'and fix the underlying cause.\n'
             'In either case, please report this assertion by filing a bug on GitHub:\n'
-            '  https://github.com/flutter/flutter/issues/new?template=2_bug.md',
+            '  https://github.com/flutter/flutter/issues/new?template=2_bug.yml',
           ));
         }
       }
@@ -855,7 +853,7 @@ class FlutterError extends Error with DiagnosticableTreeMixin implements Asserti
           '\nThis error should still help you solve your problem, '
           'however please also report this malformed error in the '
           'framework by filing a bug on GitHub:\n'
-          '  https://github.com/flutter/flutter/issues/new?template=2_bug.md',
+          '  https://github.com/flutter/flutter/issues/new?template=2_bug.yml',
         ),
       ]),
     );
@@ -881,7 +879,7 @@ class FlutterError extends Error with DiagnosticableTreeMixin implements Asserti
           '\nThis error should still help you solve your problem, '
           'however please also report this malformed error in the '
           'framework by filing a bug on GitHub:\n'
-          '  https://github.com/flutter/flutter/issues/new?template=2_bug.md',
+          '  https://github.com/flutter/flutter/issues/new?template=2_bug.yml',
         ));
         throw FlutterError.fromParts(message);
       }
@@ -933,24 +931,27 @@ class FlutterError extends Error with DiagnosticableTreeMixin implements Asserti
 
   /// Called by the Flutter framework before attempting to parse a [StackTrace].
   ///
-  /// Some [StackTrace] implementations have a different toString format from
-  /// what the framework expects, like ones from package:stack_trace. To make
+  /// Some [StackTrace] implementations have a different [toString] format from
+  /// what the framework expects, like ones from `package:stack_trace`. To make
   /// sure we can still parse and filter mangled [StackTrace]s, the framework
   /// first calls this function to demangle them.
   ///
-  /// This should be set in any environment that could propagate a non-standard
+  /// This should be set in any environment that could propagate an unusual
   /// stack trace to the framework. Otherwise, the default behavior is to assume
-  /// all stack traces are in a standard format.
+  /// all stack traces are in a format usually generated by Dart.
   ///
-  /// The following example demangles package:stack_trace traces by converting
-  /// them into vm traces, which the framework is able to parse:
+  /// The following example demangles `package:stack_trace` traces by converting
+  /// them into VM traces, which the framework is able to parse:
   ///
   /// ```dart
-  /// FlutterError.demangleStackTrace = (StackTrace stackTrace) {
-  ///   if (stack is stack_trace.Trace)
+  /// FlutterError.demangleStackTrace = (StackTrace stack) {
+  ///   // Trace and Chain are classes in package:stack_trace
+  ///   if (stack is Trace) {
   ///     return stack.vmTrace;
-  ///   if (stack is stack_trace.Chain)
+  ///   }
+  ///   if (stack is Chain) {
   ///     return stack.toTrace().vmTrace;
+  ///   }
   ///   return stack;
   /// };
   /// ```
@@ -998,15 +999,13 @@ class FlutterError extends Error with DiagnosticableTreeMixin implements Asserti
   ///
   /// The default behavior for the [onError] handler is to call this function.
   static void dumpErrorToConsole(FlutterErrorDetails details, { bool forceReport = false }) {
-    assert(details != null);
-    assert(details.exception != null);
     bool isInDebugMode = false;
     assert(() {
       // In debug mode, we ignore the "silent" flag.
       isInDebugMode = true;
       return true;
     }());
-    final bool reportError = isInDebugMode || details.silent != true; // could be null
+    final bool reportError = isInDebugMode || !details.silent;
     if (!reportError && !forceReport) {
       return;
     }
@@ -1037,7 +1036,7 @@ class FlutterError extends Error with DiagnosticableTreeMixin implements Asserti
   /// Adds a stack filtering function to [defaultStackFilter].
   ///
   /// For example, the framework adds common patterns of element building to
-  /// elide tree-walking patterns in the stacktrace.
+  /// elide tree-walking patterns in the stack trace.
   ///
   /// Added filters are checked in order of addition. The first matching filter
   /// wins, and subsequent filters will not be checked.
@@ -1114,7 +1113,7 @@ class FlutterError extends Error with DiagnosticableTreeMixin implements Asserti
 
     // Only include packages we actually elided from.
     final List<String> where = <String>[
-      for (MapEntry<String, int> entry in removedPackagesAndClasses.entries)
+      for (final MapEntry<String, int> entry in removedPackagesAndClasses.entries)
         if (entry.value > 0)
           entry.key,
     ]..sort();
@@ -1179,8 +1178,6 @@ class FlutterError extends Error with DiagnosticableTreeMixin implements Asserti
   /// ```
   /// {@end-tool}
   static void reportError(FlutterErrorDetails details) {
-    assert(details != null);
-    assert(details.exception != null);
     onError?.call(details);
   }
 }
@@ -1227,7 +1224,7 @@ void debugPrintStack({StackTrace? stackTrace, String? label, int? maxFrames}) {
 class DiagnosticsStackTrace extends DiagnosticsBlock {
   /// Creates a diagnostic for a stack trace.
   ///
-  /// [name] describes a name the stacktrace is given, e.g.
+  /// [name] describes a name the stack trace is given, e.g.
   /// `When the exception was thrown, this was the stack`.
   /// [stackFilter] provides an optional filter to use to filter which frames
   /// are included. If no filter is specified, [FlutterError.defaultStackFilter]

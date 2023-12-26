@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 
 void main() {
   test('copyWith, ==, hashCode basics', () {
@@ -12,7 +13,13 @@ void main() {
     expect(const DrawerThemeData().hashCode, const DrawerThemeData().copyWith().hashCode);
   });
 
-  testWidgets('Default debugFillProperties', (WidgetTester tester) async {
+  test('DrawerThemeData lerp special cases', () {
+    expect(DrawerThemeData.lerp(null, null, 0), null);
+    const DrawerThemeData data = DrawerThemeData();
+    expect(identical(DrawerThemeData.lerp(data, data, 0.5), data), true);
+  });
+
+  testWidgetsWithLeakTracking('Default debugFillProperties', (WidgetTester tester) async {
     final DiagnosticPropertiesBuilder builder = DiagnosticPropertiesBuilder();
     const DrawerThemeData().debugFillProperties(builder);
 
@@ -24,12 +31,14 @@ void main() {
     expect(description, <String>[]);
   });
 
-  testWidgets('Custom debugFillProperties', (WidgetTester tester) async {
+  testWidgetsWithLeakTracking('Custom debugFillProperties', (WidgetTester tester) async {
     final DiagnosticPropertiesBuilder builder = DiagnosticPropertiesBuilder();
     const DrawerThemeData(
       backgroundColor: Color(0x00000099),
       scrimColor: Color(0x00000098),
       elevation: 5.0,
+      shadowColor: Color(0x00000097),
+      surfaceTintColor: Color(0x00000096),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(2.0))),
       width: 200.0,
     ).debugFillProperties(builder);
@@ -43,15 +52,19 @@ void main() {
       'backgroundColor: Color(0x00000099)',
       'scrimColor: Color(0x00000098)',
       'elevation: 5.0',
-      'shape: RoundedRectangleBorder(BorderSide(Color(0xff000000), 0.0, BorderStyle.none), BorderRadius.circular(2.0))',
+      'shadowColor: Color(0x00000097)',
+      'surfaceTintColor: Color(0x00000096)',
+      'shape: RoundedRectangleBorder(BorderSide(width: 0.0, style: none), BorderRadius.circular(2.0))',
       'width: 200.0',
     ]);
   });
 
-  testWidgets('Default values are used when no Drawer or DrawerThemeData properties are specified', (WidgetTester tester) async {
+  testWidgetsWithLeakTracking('Material2 - Default values are used when no Drawer or DrawerThemeData properties are specified', (WidgetTester tester) async {
     final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+    final ThemeData theme = ThemeData(useMaterial3: false);
     await tester.pumpWidget(
       MaterialApp(
+        theme: theme,
         home: Scaffold(
           key: scaffoldKey,
           drawer: const Drawer(),
@@ -63,15 +76,97 @@ void main() {
 
     expect(_drawerMaterial(tester).color, null);
     expect(_drawerMaterial(tester).elevation, 16.0);
+    expect(_drawerMaterial(tester).shadowColor, theme.shadowColor);
+    expect(_drawerMaterial(tester).surfaceTintColor, null);
     expect(_drawerMaterial(tester).shape, null);
     expect(_scrim(tester).color, Colors.black54);
     expect(_drawerRenderBox(tester).size.width, 304.0);
   });
 
-  testWidgets('DrawerThemeData values are used when no Drawer properties are specified', (WidgetTester tester) async {
+  testWidgetsWithLeakTracking('Material3 - Default values are used when no Drawer or DrawerThemeData properties are specified', (WidgetTester tester) async {
+    final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+    final ThemeData theme = ThemeData(useMaterial3: true);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          key: scaffoldKey,
+          drawer: const Drawer(),
+        ),
+      ),
+    );
+    scaffoldKey.currentState!.openDrawer();
+    await tester.pumpAndSettle();
+
+    expect(_drawerMaterial(tester).color, theme.colorScheme.surface);
+    expect(_drawerMaterial(tester).elevation, 1.0);
+    expect(_drawerMaterial(tester).shadowColor, Colors.transparent);
+    expect(_drawerMaterial(tester).surfaceTintColor, theme.colorScheme.surfaceTint);
+    expect(
+      _drawerMaterial(tester).shape,
+      const RoundedRectangleBorder(borderRadius: BorderRadius.horizontal(right:  Radius.circular(16.0)))
+    );
+    expect(_scrim(tester).color, Colors.black54);
+    expect(_drawerRenderBox(tester).size.width, 304.0);
+  });
+
+  testWidgetsWithLeakTracking('Material2 - Default values are used when no Drawer or DrawerThemeData properties are specified in end drawer', (WidgetTester tester) async {
+    final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+    final ThemeData theme = ThemeData(useMaterial3: false);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          key: scaffoldKey,
+          endDrawer: const Drawer(),
+        ),
+      ),
+    );
+    scaffoldKey.currentState!.openEndDrawer();
+    await tester.pumpAndSettle();
+
+    expect(_drawerMaterial(tester).color, null);
+    expect(_drawerMaterial(tester).elevation, 16.0);
+    expect(_drawerMaterial(tester).shadowColor, theme.shadowColor);
+    expect(_drawerMaterial(tester).surfaceTintColor, null);
+    expect(_drawerMaterial(tester).shape, null);
+    expect(_scrim(tester).color, Colors.black54);
+    expect(_drawerRenderBox(tester).size.width, 304.0);
+  });
+
+  testWidgetsWithLeakTracking('Material3 - Default values are used when no Drawer or DrawerThemeData properties are specified in end drawer', (WidgetTester tester) async {
+    final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+    final ThemeData theme = ThemeData(useMaterial3: true);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          key: scaffoldKey,
+          endDrawer: const Drawer(),
+        ),
+      ),
+    );
+    scaffoldKey.currentState!.openEndDrawer();
+    await tester.pumpAndSettle();
+
+    expect(_drawerMaterial(tester).color, theme.colorScheme.surface);
+    expect(_drawerMaterial(tester).elevation, 1.0);
+    expect(_drawerMaterial(tester).shadowColor, Colors.transparent);
+    expect(_drawerMaterial(tester).surfaceTintColor, theme.colorScheme.surfaceTint);
+    expect(
+      _drawerMaterial(tester).shape,
+      const RoundedRectangleBorder(borderRadius: BorderRadius.horizontal(left:  Radius.circular(16.0)))
+    );
+    expect(_scrim(tester).color, Colors.black54);
+    expect(_drawerRenderBox(tester).size.width, 304.0);
+  });
+
+  testWidgetsWithLeakTracking('DrawerThemeData values are used when no Drawer properties are specified', (WidgetTester tester) async {
     const Color backgroundColor = Color(0x00000001);
     const Color scrimColor = Color(0x00000002);
     const double elevation = 7.0;
+    const Color shadowColor = Color(0x00000003);
+    const Color surfaceTintColor = Color(0x00000004);
     const RoundedRectangleBorder shape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16.0)));
     const double width = 200.0;
 
@@ -83,6 +178,8 @@ void main() {
             backgroundColor: backgroundColor,
             scrimColor: scrimColor,
             elevation: elevation,
+            shadowColor: shadowColor,
+            surfaceTintColor: surfaceTintColor,
             shape: shape,
             width: width,
           ),
@@ -98,15 +195,19 @@ void main() {
 
     expect(_drawerMaterial(tester).color, backgroundColor);
     expect(_drawerMaterial(tester).elevation, elevation);
+    expect(_drawerMaterial(tester).shadowColor, shadowColor);
+    expect(_drawerMaterial(tester).surfaceTintColor, surfaceTintColor);
     expect(_drawerMaterial(tester).shape, shape);
     expect(_scrim(tester).color, scrimColor);
     expect(_drawerRenderBox(tester).size.width, width);
   });
 
-  testWidgets('Drawer values take priority over DrawerThemeData values when both properties are specified', (WidgetTester tester) async {
+  testWidgetsWithLeakTracking('Drawer values take priority over DrawerThemeData values when both properties are specified', (WidgetTester tester) async {
     const Color backgroundColor = Color(0x00000001);
     const Color scrimColor = Color(0x00000002);
     const double elevation = 7.0;
+    const Color shadowColor = Color(0x00000003);
+    const Color surfaceTintColor = Color(0x00000004);
     const RoundedRectangleBorder shape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16.0)));
     const double width = 200.0;
 
@@ -115,8 +216,8 @@ void main() {
       MaterialApp(
         theme: ThemeData(
           drawerTheme: const DrawerThemeData(
-            backgroundColor: Color(0x00000003),
-            scrimColor: Color(0x00000004),
+            backgroundColor: Color(0x00000005),
+            scrimColor: Color(0x00000006),
             elevation: 13.0,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(29.0))),
             width: 400.0,
@@ -128,6 +229,8 @@ void main() {
           drawer: const Drawer(
             backgroundColor: backgroundColor,
             elevation: elevation,
+            shadowColor: shadowColor,
+            surfaceTintColor: surfaceTintColor,
             shape: shape,
             width: width,
           ),
@@ -139,15 +242,19 @@ void main() {
 
     expect(_drawerMaterial(tester).color, backgroundColor);
     expect(_drawerMaterial(tester).elevation, elevation);
+    expect(_drawerMaterial(tester).shadowColor, shadowColor);
+    expect(_drawerMaterial(tester).surfaceTintColor, surfaceTintColor);
     expect(_drawerMaterial(tester).shape, shape);
     expect(_scrim(tester).color, scrimColor);
     expect(_drawerRenderBox(tester).size.width, width);
   });
 
-  testWidgets('DrawerTheme values take priority over ThemeData.drawerTheme values when both properties are specified', (WidgetTester tester) async {
+  testWidgetsWithLeakTracking('DrawerTheme values take priority over ThemeData.drawerTheme values when both properties are specified', (WidgetTester tester) async {
     const Color backgroundColor = Color(0x00000001);
     const Color scrimColor = Color(0x00000002);
     const double elevation = 7.0;
+    const Color shadowColor = Color(0x00000003);
+    const Color surfaceTintColor = Color(0x00000004);
     const RoundedRectangleBorder shape = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16.0)));
     const double width = 200.0;
 
@@ -156,9 +263,11 @@ void main() {
       MaterialApp(
         theme: ThemeData(
           drawerTheme: const DrawerThemeData(
-            backgroundColor: Color(0x00000003),
-            scrimColor: Color(0x00000004),
+            backgroundColor: Color(0x00000005),
+            scrimColor: Color(0x00000006),
             elevation: 13.0,
+            shadowColor: Color(0x00000007),
+            surfaceTintColor: Color(0x00000007),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(29.0))),
             width: 400.0
           ),
@@ -168,6 +277,8 @@ void main() {
             backgroundColor: backgroundColor,
             scrimColor: scrimColor,
             elevation: elevation,
+            shadowColor: shadowColor,
+            surfaceTintColor: surfaceTintColor,
             shape: shape,
             width: width,
           ),
@@ -183,6 +294,8 @@ void main() {
 
     expect(_drawerMaterial(tester).color, backgroundColor);
     expect(_drawerMaterial(tester).elevation, elevation);
+    expect(_drawerMaterial(tester).shadowColor, shadowColor);
+    expect(_drawerMaterial(tester).surfaceTintColor, surfaceTintColor);
     expect(_drawerMaterial(tester).shape, shape);
     expect(_scrim(tester).color, scrimColor);
     expect(_drawerRenderBox(tester).size.width, width);

@@ -7,6 +7,7 @@ import 'package:process/process.dart';
 
 import '../base/file_system.dart';
 import '../base/io.dart';
+import '../base/logger.dart';
 import '../base/platform.dart';
 import '../base/user_messages.dart' hide userMessages;
 import '../base/version.dart';
@@ -50,6 +51,7 @@ abstract class IntelliJValidator extends DoctorValidator {
   static Iterable<DoctorValidator> installedValidators({
     required FileSystem fileSystem,
     required Platform platform,
+    required Logger logger,
     required UserMessages userMessages,
     required PlistParser plistParser,
     required ProcessManager processManager,
@@ -77,6 +79,7 @@ abstract class IntelliJValidator extends DoctorValidator {
         userMessages: userMessages,
         plistParser: plistParser,
         processManager: processManager,
+        logger: logger,
       );
     }
     return <DoctorValidator>[];
@@ -114,7 +117,7 @@ abstract class IntelliJValidator extends DoctorValidator {
     }
 
     return ValidationResult(
-      _hasIssues(messages) ? ValidationType.partial : ValidationType.installed,
+      _hasIssues(messages) ? ValidationType.partial : ValidationType.success,
       messages,
       statusInfo: _userMessages.intellijStatusInfo(version),
     );
@@ -125,11 +128,6 @@ abstract class IntelliJValidator extends DoctorValidator {
   }
 
   void _validateIntelliJVersion(List<ValidationMessage> messages, Version minVersion) {
-    // Ignore unknown versions.
-    if (minVersion == Version.unknown) {
-      return;
-    }
-
     final Version? installedVersion = Version.parse(version);
     if (installedVersion == null) {
       return;
@@ -381,11 +379,13 @@ class IntelliJValidatorOnMac extends IntelliJValidator {
     'IntelliJ IDEA.app': _ultimateEditionId,
     'IntelliJ IDEA Ultimate.app': _ultimateEditionId,
     'IntelliJ IDEA CE.app': _communityEditionId,
+    'IntelliJ IDEA Community Edition.app': _communityEditionId,
   };
 
   static Iterable<DoctorValidator> installed({
     required FileSystem fileSystem,
     required FileSystemUtils fileSystemUtils,
+    required Logger logger,
     required UserMessages userMessages,
     required PlistParser plistParser,
     required ProcessManager processManager,
@@ -487,6 +487,26 @@ class IntelliJValidatorOnMac extends IntelliJValidator {
           ]),
       ));
     }
+
+    // Remove JetBrains Toolbox link apps. These tiny apps just
+    // link to the full app, will get detected elsewhere in our search.
+    validators.removeWhere((DoctorValidator validator) {
+      if (validator is! IntelliJValidatorOnMac) {
+        return false;
+      }
+      final String? identifierKey = plistParser.getValueFromFile<String>(
+        validator.plistFile,
+        PlistParser.kCFBundleIdentifierKey,
+      );
+      if (identifierKey == null) {
+        logger.printTrace('Android Studio/IntelliJ installation at '
+          '${validator.installPath} has a null CFBundleIdentifierKey, '
+          'which is a required field.');
+        return false;
+      }
+      return identifierKey.contains('com.jetbrains.toolbox.linkapp');
+    });
+
     return validators;
   }
 
@@ -499,7 +519,7 @@ class IntelliJValidatorOnMac extends IntelliJValidator {
 
   @override
   String get version {
-    return _version ??= _plistParser.getStringValueFromFile(
+    return _version ??= _plistParser.getValueFromFile<String>(
         plistFile,
         PlistParser.kCFBundleShortVersionStringKey,
       ) ?? 'unknown';
@@ -513,7 +533,7 @@ class IntelliJValidatorOnMac extends IntelliJValidator {
     }
 
     final String? altLocation = _plistParser
-      .getStringValueFromFile(plistFile, 'JetBrainsToolboxApp');
+      .getValueFromFile<String>(plistFile, 'JetBrainsToolboxApp');
 
     if (altLocation != null) {
       _pluginsPath = '$altLocation.plugins';

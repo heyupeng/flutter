@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flutter code sample for Image.frameBuilder
-
 import 'package:flutter/material.dart';
+
+/// Flutter code sample for [Image.frameBuilder].
 
 void main() {
   runApp(MyApp());
@@ -13,7 +13,7 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
   
-@override
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
     title: 'Flutter Code Sample',
@@ -29,8 +29,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyStatelessWidget extends StatelessWidget {
-  const MyStatelessWidget({super.key, required this.image});
+class ImageClipExample extends StatelessWidget {
+  const ImageClipExample({super.key, required this.image});
 
   final ImageProvider image;
 

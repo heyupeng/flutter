@@ -10,6 +10,9 @@ import 'package:flutter/widgets.dart';
 import 'button_theme.dart';
 import 'theme.dart';
 
+// Examples can assume:
+// late BuildContext context;
+
 /// Defines the visual properties of [ButtonBar] widgets.
 ///
 /// Used by [ButtonBarTheme] to control the visual properties of [ButtonBar]
@@ -143,9 +146,8 @@ class ButtonBarThemeData with Diagnosticable {
   ///
   /// {@macro dart.ui.shadow.lerp}
   static ButtonBarThemeData? lerp(ButtonBarThemeData? a, ButtonBarThemeData? b, double t) {
-    assert(t != null);
-    if (a == null && b == null) {
-      return null;
+    if (identical(a, b)) {
+      return a;
     }
     return ButtonBarThemeData(
       alignment: t < 0.5 ? a?.alignment : b?.alignment,
@@ -231,13 +233,11 @@ class ButtonBarThemeData with Diagnosticable {
 class ButtonBarTheme extends InheritedWidget {
   /// Constructs a button bar theme that configures all descendent [ButtonBar]
   /// widgets.
-  ///
-  /// The [data] must not be null.
   const ButtonBarTheme({
     super.key,
     required this.data,
     required super.child,
-  }) : assert(data != null);
+  });
 
   /// The properties used for all descendant [ButtonBar] widgets.
   final ButtonBarThemeData data;
