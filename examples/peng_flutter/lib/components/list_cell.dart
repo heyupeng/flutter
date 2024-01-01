@@ -3,32 +3,45 @@ import 'package:flutter/material.dart';
 class HoListCell extends StatelessWidget {
   const HoListCell({ 
     super.key, 
-    this.title = '', 
-    this.showIndicator = false,
+    this.title = '',
+    this.showIndicator = true,
     this.onTap,
+    this.child,
+    this.builder,
+
+    this.indicatorBuilder,
    });
   
   final String title;
   final bool showIndicator;
   final void Function()? onTap;
+  final Widget? child;
+  final WidgetBuilder? builder;
+  final WidgetBuilder? indicatorBuilder;
+
   @override
   Widget build(BuildContext context) {
+    Widget? trailing = indicatorBuilder != null ? indicatorBuilder!(context) :showIndicator ? buildIndicator() : null;
+
+    Widget child = builder != null ? builder!(context) : this.child ??
+     ListTile(
+        title: Text(title),
+        style: ListTileStyle.list,
+        trailing: trailing,
+        onTap: onTap
+      )
+    ;
+    final ThemeData themeData = Theme.of(context);
+    final ColorScheme colorScheme = themeData.colorScheme;
     return 
-    Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-      child: Container(
+      Container(
+        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          color: colorScheme.surface.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey.withAlpha((255*0.3).ceil()) )
         ),
-        child: 
-          ListTile(title: Text(title), 
-            style: ListTileStyle.list,
-            trailing: showIndicator ? buildIndicator() : null,
-            onTap: onTap
-          ),
-        ),
+        child: child,
     );
   }
 }

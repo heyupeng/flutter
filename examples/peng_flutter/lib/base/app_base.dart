@@ -76,9 +76,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   final ScrollController _scrollController = ScrollController(
     onAttach: (ScrollPosition position) {
-      print('Scroll attach: ${position}');
+      // print('Scroll attach: ${position}');
     }, onDetach: (position) {
-      print('Scroll detach: ${position}');
+      // print('Scroll detach: ${position}');
     },
   );
 

@@ -42,7 +42,11 @@ dependencies:
   
   flutter_examples_layers:
     path: '../layers'
-  
+
+  # image cache
+  cached_network_image: ^3.0.0
+  # webview
+  webview_flutter: ^4.4.2
 
 dev_dependencies:
   flutter_test:

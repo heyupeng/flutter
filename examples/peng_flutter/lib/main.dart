@@ -8,7 +8,6 @@ import 'package:peng_flutter/examples_demo.dart';
 import 'package:peng_flutter/pages/history_page.dart';
 import 'package:peng_flutter/pages/settings_page.dart';
 
-import 'SampleDemo/ListViewDemo.dart';
 import './p_samples/main.dart' as samples;
 
 void main() {
@@ -33,7 +32,7 @@ class MyApp extends StatelessWidget {
         // or simply save your changes to "hot reload" in a Flutter IDE).
         // Notice that the counter didn't reset back to zero; the application
         // is not restarted.
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.blue, 
       ),
       home: 0 == 0 ? buildTabApp() : const ExampleListPage(),
     );
@@ -43,6 +42,8 @@ class MyApp extends StatelessWidget {
     return 
     BaseApp(
       child: 
+      Stack(
+        children: [
         TabPage(
           children: [
             MyHomePage(title: 'title', routes: 
@@ -58,7 +59,11 @@ class MyApp extends StatelessWidget {
             TabBarItem(text: 'history', icon: Icon(Icons.history), tooltip: 'history'),
             TabBarItem(text: 'Settings', icon: Icon(Icons.settings), tooltip: 'settings'),
           ]
-        )
+        ),
+        const GestureIndicator()
+        ],
+      )
+      
       , 
     )
     ;

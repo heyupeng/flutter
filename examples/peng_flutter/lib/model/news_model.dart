@@ -49,11 +49,11 @@ class NewsModel {
   String get newsTag => jsonObject['newsTag'] ?? '';
   int get comment => jsonObject['comment'] ?? 0;
 
-  static NewsModel parser(dynamic jsonObject) {
+  static NewsModel formJson(dynamic jsonObject) {
     return NewsModel(jsonObject: jsonObject);
   }
 
-  static List<NewsModel> list(dynamic jsonObject) {
+  static List<NewsModel> formJsonList(dynamic jsonObject) {
     var jsonList = jsonObject as List?;
     return jsonList?.map((element) => NewsModel(jsonObject: element)).toList() ?? [];
   }
